@@ -30,6 +30,7 @@
 
 #ifdef _WIN32
 #include <stdlib.h>
+#include <winsock2.h>
 static_assert(sizeof(uint16_t) == sizeof(unsigned short),
               "wrong size for ushort");
 static_assert(sizeof(uint32_t) == sizeof(unsigned long),
@@ -45,8 +46,41 @@ namespace basics {
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static constexpr bool isLittleEndian() { return true; }
+
+#ifdef _WIN32
+#define htobe16(x) htons(x)
+#define htole16(x) (x)
+#define be16toh(x) ntohs(x)
+#define le16toh(x) (x)
+
+#define htobe32(x) htonl(x)
+#define htole32(x) (x)
+#define be32toh(x) ntohl(x)
+#define le32toh(x) (x)
+
+#define htobe64(x) htonll(x)
+#define htole64(x) (x)
+#define be64toh(x) ntohll(x)
+#define le64toh(x) (x)
+#endif
 #elif __BYTE_ORDER == __BIG_ENDIAN
 static constexpr bool isLittleEndian() { return false; }
+
+#define htobe16(x) (x)
+#define htole16(x) __builtin_bswap16(x)
+#define be16toh(x) (x)
+#define le16toh(x) __builtin_bswap16(x)
+
+#define htobe32(x) (x)
+#define htole32(x) __builtin_bswap32(x)
+#define be32toh(x) (x)
+#define le32toh(x) __builtin_bswap32(x)
+
+#define htobe64(x) (x)
+#define htole64(x) __builtin_bswap64(x)
+#define be64toh(x) (x)
+#define le64toh(x) __builtin_bswap64(x)
+
 #endif
 
 template<typename T, size_t size>
