@@ -631,6 +631,7 @@ class IResearchInvertedIndexMergeIterator final
 
  protected:
   void resetImpl() final {
+#ifdef FIXWINDOWS
     _segments.clear();
     auto const size = _snapshot.size();
     _segments.reserve(size);
@@ -642,6 +643,7 @@ class IResearchInvertedIndexMergeIterator final
       _segments.emplace_back(std::move(it), segment, _projectionsPrototype);
     }
     _heap_it.Reset(_segments);
+#endif
   }
 
   bool nextImpl(LocalDocumentIdCallback const& callback,
