@@ -858,6 +858,8 @@ endif ()
 
 if(MSVC)
   add_compile_options("/J")
+  add_compile_options("/DNOMINMAX")
+  add_compile_options("/DWIN32_LEAN_AND_MEAN")
 endif()
 # c
 # note: when building one of the build types, CMake will automatically combine
