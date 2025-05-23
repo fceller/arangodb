@@ -509,7 +509,11 @@ ResultT<NodePtr> buildPathAndExecute(Node const* node, Iter begin, Iter end,
       if constexpr (std::is_same_v<boost::split_iterator<const char*>, Iter>) {
         return boost::copy_range<std::string>(*begin);
       } else {
+#ifdef FIXWINDOWS
         return std::string{*begin};
+#else
+        return std::string{};
+#endif
       }
     }(begin);
 

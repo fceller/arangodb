@@ -401,7 +401,9 @@
 
 #define fileno _fileno
 #define fsync _commit
+#ifdef FIXWINDOWS
 #define isatty _cyg_isatty
+#endif
 #define putenv _putenv
 #define tzset _tzset
 

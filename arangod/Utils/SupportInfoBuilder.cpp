@@ -513,13 +513,15 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
       server.getFeature<metrics::MetricsFeature>().serverStatistics();
   result.add(keys["processUptime"], VPackValue(serverInfo.uptime()));
 
-  FileDescriptorsFeature& fd = server.getFeature<FileDescriptorsFeature>();
   ProcessInfo info = TRI_ProcessInfoSelf();
   result.add(keys["nThreads"], VPackValue(info._numberThreads));
   result.add(keys["virtualSize"], VPackValue(info._virtualSize));
   result.add(keys["residentSetSize"], VPackValue(info._residentSize));
+#ifdef TRI_HAVE_GETRLIMIT
+  FileDescriptorsFeature& fd = server.getFeature<FileDescriptorsFeature>();
   result.add("fileDescrtors", VPackValue(fd.current()));
   result.add("fileDescrtorsLimit", VPackValue(fd.limit()));
+#endif
   result.close();  // processStats
 
   CpuUsageFeature& cpuUsage = server.getFeature<CpuUsageFeature>();

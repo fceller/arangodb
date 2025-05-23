@@ -1663,11 +1663,13 @@ void Agent::persistConfiguration(term_t t) {
     // Make sure we have setup the local list of lastAckedIndex
     // only containing the leader
     auto follower = _followerData.getLockedGuard();
+#ifdef FIXWINDOWS
     if (follower->find(id()) == follower->end()) {
       follower->emplace(id(),
                         FollowerData{._lastAckedTime = steady_clock::now(),
                                      ._lastAckedIndex = 0});
     }
+#endif
   }
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
@@ -2356,6 +2358,7 @@ void Agent::syncActiveAndAcknowledged() {
     auto follower = _followerData.getLockedGuard();
     // The number of Agents is small, so we can afford to always scan linearly
     // here
+#ifdef FIXWINDOWS
     for (auto const& peer : _config.active()) {
       if (follower->find(peer) == follower->end()) {
         follower->emplace(peer,
@@ -2363,6 +2366,7 @@ void Agent::syncActiveAndAcknowledged() {
                                        ._lastAckedIndex = 0});
       }
     }
+#endif
   }
 }
 

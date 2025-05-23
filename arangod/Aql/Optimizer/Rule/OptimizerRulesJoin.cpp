@@ -1045,7 +1045,9 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
               std::vector<std::unique_ptr<Expression>> constExpressions{};
               std::vector<size_t> computedUseKeyFields{};
               std::vector<size_t> computedConstantFields{};
+#ifdef FIXWINDOWS
               bool isUniqueStream = false;
+#endif
 
               if (indicesOffsets.contains(c->id())) {
                 auto const& idxOffset = indicesOffsets[c->id()];
@@ -1060,16 +1062,18 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                 }
 
                 computedUseKeyFields = std::move(idxOffset.getKeyFields());
+#ifdef FIXWINDOWS
                 computedConstantFields =
                     std::move(idxOffset.getConstantFields());
                 isUniqueStream = idxOffset.isUniqueStream;
+#endif
               } else {
                 // if no constants have been found, we'll stick to the
                 // defaults.
                 computedUseKeyFields = {0};
                 computedConstantFields = {};
               }
-
+#ifdef FIXWINDOWS
               auto info = JoinNode::IndexInfo{
                   .collection = c->collection(),
                   .outVariable = c->outVariable(),
@@ -1095,6 +1099,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
               indexInfos.emplace_back(std::move(info));
               handled.emplace(c);
+#endif
             }
             JoinNode* jn = plan->createNode<JoinNode>(
                 plan.get(), plan->nextId(), std::move(indexInfos),

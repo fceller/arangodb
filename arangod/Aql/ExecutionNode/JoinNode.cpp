@@ -71,6 +71,7 @@ JoinNode::JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
 
 JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {
+#ifdef FIXWINDOWS
   // TODO: this code is almost the same in IndexNode. move into a sharable
   // function
   _options.sorted =
@@ -177,7 +178,6 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
       filter = std::make_unique<Expression>(plan->getAst(),
                                             plan->getAst()->createNode(fs));
     }
-
     auto& idx = _indexInfos.emplace_back(
         IndexInfo{.collection = coll,
                   .outVariable = outVariable,
@@ -225,6 +225,7 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
   }
 
   TRI_ASSERT(_indexInfos.size() >= 2);
+#endif
 }
 
 JoinNode::~JoinNode() = default;
@@ -446,6 +447,8 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
 
 ExecutionNode* JoinNode::clone(ExecutionPlan* plan,
                                bool withDependencies) const {
+#ifdef FIXWINDOWS
+
   std::vector<IndexInfo> indexInfos;
   indexInfos.reserve(_indexInfos.size());
 
@@ -454,7 +457,6 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan,
     for (auto const& expr : it.expressions) {
       clonedExpressions.emplace_back(expr->clone(plan->getAst(), true));
     }
-
     indexInfos.emplace_back(IndexInfo{
         .collection = it.collection,
         .usedShard = it.usedShard,
@@ -477,6 +479,9 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan,
       std::make_unique<JoinNode>(plan, _id, std::move(indexInfos), _options);
 
   return cloneHelper(std::move(c), withDependencies);
+#else
+  return 0;
+#endif
 }
 
 /// @brief replaces variables in the internals of the execution node

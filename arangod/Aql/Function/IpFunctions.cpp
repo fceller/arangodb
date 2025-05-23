@@ -35,7 +35,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#ifdef FIXWINDOWS
 #include <arpa/inet.h>
+#endif
 
 using namespace arangodb;
 
@@ -123,7 +125,11 @@ AqlValue functions::IpV4ToNumber(ExpressionContext* expressionContext,
 
     struct in_addr addr;
     memset(&addr, 0, sizeof(struct in_addr));
+#ifdef FIXWINDOWS
     int result = inet_pton(AF_INET, &buffer[0], &addr);
+#else
+    int result = 1;
+#endif
 
     if (result == 1) {
       return AqlValue(AqlValueHintUInt(
@@ -165,7 +171,11 @@ AqlValue functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
 
     struct in_addr addr;
     memset(&addr, 0, sizeof(struct in_addr));
+#ifdef FIXWINDOWS
     int result = inet_pton(AF_INET, &buffer[0], &addr);
+#else
+    int result = 1;
+#endif
 
     if (result == 1) {
       return AqlValue(AqlValueHintBool(true));
@@ -176,3 +186,4 @@ AqlValue functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
 }
 
 }  // namespace arangodb::aql
+

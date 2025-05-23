@@ -25,7 +25,10 @@
 
 #include <cstring>
 #include <fcntl.h>
+
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 #include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
@@ -36,11 +39,14 @@
 namespace arangodb::replication2::storage::wal {
 FileWriterImplPosix::FileWriterImplPosix(std::filesystem::path path)
     : _path(std::move(path)) {
+#ifdef FIXMEWINDOWS
   _file = ::open(_path.c_str(), O_CREAT | O_RDWR | O_APPEND,
-                 S_IRUSR | S_IWUSR | O_CLOEXEC);
+                 S_IRUSR | S_IWUSR | O_CLOEXEC
+                 );
   ADB_PROD_ASSERT(_file >= 0)
       << "failed to open replicated log file" << _path.string()
       << " for writing with error " << strerror(errno);
+#endif
   auto off = ::lseek(_file, 0, SEEK_END);
   ADB_PROD_ASSERT(off >= 0)
       << "failed to obtain file size for file " << _path.string()
@@ -49,7 +55,11 @@ FileWriterImplPosix::FileWriterImplPosix(std::filesystem::path path)
 
   // we also need to fsync the directory to ensure that the file is visible!
   auto dir = _path.parent_path();
+#ifdef FIXMEWINDOWS
   auto fd = ::open(dir.c_str(), O_DIRECTORY | O_RDONLY);
+#else
+  int fd = 0;
+#endif
   ADB_PROD_ASSERT(fd >= 0) << "failed to open directory " << dir.string()
                            << " with error " << strerror(errno);
   ADB_PROD_ASSERT(fsync(fd) == 0)
@@ -74,7 +84,9 @@ auto FileWriterImplPosix::append(std::string_view data) -> Result {
   if (static_cast<std::size_t>(n) != data.size()) {
     // try to revert the partial write. this is only best effort - we have to
     // abort anyway!
+#ifdef FIXMEWINDOWS
     std::ignore = ::ftruncate(_file, _size);
+#endif
     ADB_PROD_ASSERT(false) << "write to log file " << _path.string()
                            << " was incomplete; could only write " << n
                            << " of " << data.size() << " bytes - "
@@ -86,18 +98,26 @@ auto FileWriterImplPosix::append(std::string_view data) -> Result {
 }
 
 void FileWriterImplPosix::truncate(std::uint64_t size) {
+#ifdef FIXMEWINDOWS
   ADB_PROD_ASSERT(::ftruncate(_file, size) == 0)
       << "failed to truncate file" << _path.string() << " to size " << size
       << ": " << strerror(errno);
+#endif
 }
 
 void FileWriterImplPosix::sync() {
+#ifdef FIXMEWINDOWS
   ADB_PROD_ASSERT(fdatasync(_file) == 0)
       << "failed to flush file " << _path.string() << ": " << strerror(errno);
+#endif
 }
 
 auto FileWriterImplPosix::getReader() const -> std::unique_ptr<IFileReader> {
+#ifdef FIXMEWINDOWS
   return std::make_unique<FileReaderImpl>(_path);
+#else
+  return std::make_unique<FileReaderImpl>("");
+#endif
 }
 
 }  // namespace arangodb::replication2::storage::wal

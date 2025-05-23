@@ -2128,7 +2128,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   // Workaround for using clang15 during asan build.
   // FIXME: remove it as soon as we switch to clang16 or higher
   auto infosTuple = buildExecutorInfo(engine, std::move(reader));
+#ifdef FIXWINDOWS
   auto& materializeType = std::get<0>(infosTuple);
+#endif
   auto& executorInfos = std::get<1>(infosTuple);
   auto& registerInfos = std::get<2>(infosTuple);
   // guaranteed by optimizer rule
@@ -2144,6 +2146,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   auto const executorIdx =
       getExecutorIndex(sorted, ordered, heapsort, emitSearchDoc);
   return irs::ResolveBool(_options.parallelism > 1, [&]<bool copyStored>() {
+#ifdef FIXWINDOWS
     switch (materializeType) {
       case MaterializeType::NotMaterialize:
         return kExecutors<copyStored,
@@ -2188,6 +2191,11 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       default:
         ADB_UNREACHABLE;
     }
+#else
+      return kExecutors<copyStored,
+                                MaterializeType::NotMaterialize>[executorIdx](
+                  &engine, this, std::move(registerInfos), std::move(executorInfos));
+#endif
   });
 }
 
