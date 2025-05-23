@@ -271,6 +271,9 @@ function arangosh (options) {
   let output = fs.readPipe(res.pid);
   // Arangosh will output a \n on its own, so we will get back 2:
   let searchstring = "bla\n\n";
+  if (platform.substr(0, 3) === 'win') {
+    searchstring = "bla\r\n\r\n";
+  }
   let success = output === searchstring;
 
   let rc = statusExternal(res.pid, true);
@@ -300,8 +303,8 @@ function arangosh (options) {
 
   ret[section]['duration'] = deltaTime;
   print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
-
-  {
+  
+  if (platform.substr(0, 3) !== 'win') {
     var echoSuccess = true;
     var deltaTime2 = 0;
     var execFile = fs.getTempFile();
@@ -340,7 +343,7 @@ function arangosh (options) {
   }
 
   // test shebang execution with arangosh
-  {
+  if (!options.skipShebang && platform.substr(0, 3) !== 'win') {
     var shebangSuccess = true;
     var deltaTime3 = 0;
     var shebangFile = fs.getTempFile();

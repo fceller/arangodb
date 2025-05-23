@@ -453,7 +453,7 @@ class instance {
         'foxx.force-update-on-startup': true
       });
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
-        this.args['cluster.default-replication-factor'] = '2';
+        this.args['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1':'2';
       }
     }
     if (this.options.isInstrumented && this.instanceRole in [
@@ -691,7 +691,11 @@ class instance {
 
       if (res.hasOwnProperty('signal') &&
           ((res.signal === 11) ||
-           (res.signal === 6))) {
+           (res.signal === 6) ||
+           // Windows sometimes has random numbers in signal...
+           (platform.substr(0, 3) === 'win')
+          )
+         ) {
         msg = 'health Check Signal(' + res.signal + ') ';
         this.analyzeServerCrash(msg);
         this.serverCrashedLocal = true;

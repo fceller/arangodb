@@ -26,6 +26,9 @@
 #include <string_view>
 #include <type_traits>
 #include "RestServer/DatabaseFeature.h"
+#ifdef _WIN32
+#include <iostream>
+#endif
 
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
@@ -239,6 +242,34 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   exit(EXIT_FAILURE);
 }
 
+#if _WIN32
+static int ARGC;
+static char** ARGV;
+
+static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
+  if (!TRI_InitWindowsEventLog()) {
+    return;
+  }
+  // register the service ctrl handler,  lpszArgv[0] contains service name
+  ServiceStatus =
+      RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
+
+  // set start pending
+  SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
+
+  TRI_GET_ARGV(ARGC, ARGV);
+  ArangoGlobalContext context(ARGC, ARGV, SBIN_DIRECTORY);
+  runServer(ARGC, ARGV, context);
+
+  // service has stopped
+  SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0, 0);
+  TRI_CloseWindowsEventlog();
+}
+
+#endif
+
+#ifdef __linux__
+
 // The following is a hack which is currently (September 2019) needed to
 // let our static executables compiled with libmusl and gcc 8.3.0 properly
 // detect that we are a multi-threaded application.
@@ -257,6 +288,7 @@ static void f() {
   static pthread_once_t once_control = PTHREAD_ONCE_INIT;
   pthread_once(&once_control, gg);
 }
+#endif
 
 int main(int argc, char* argv[]) {
   // Do not delete this! See above for an explanation.
@@ -267,6 +299,23 @@ int main(int argc, char* argv[]) {
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
 
   TRI_GET_ARGV(argc, argv);
+#if _WIN32
+  if (argc > 1 && std::string_view(argv[1]) == "--start-service") {
+    ARGC = argc;
+    ARGV = argv;
+
+    SERVICE_TABLE_ENTRY ste[] = {
+        {TEXT(const_cast<char*>("")), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+        {nullptr, nullptr}};
+
+    if (!StartServiceCtrlDispatcher(ste)) {
+      std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
+                << GetLastError() << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    return 0;
+  }
+#endif
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
 
   arangodb::restartAction = nullptr;

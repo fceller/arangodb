@@ -834,4 +834,6 @@ std::unique_ptr<GeneralResponse> HttpCommTask<T>::createResponse(
 
 template class arangodb::rest::HttpCommTask<SocketType::Tcp>;
 template class arangodb::rest::HttpCommTask<SocketType::Ssl>;
+#ifndef _WIN32
 template class arangodb::rest::HttpCommTask<SocketType::Unix>;
+#endif

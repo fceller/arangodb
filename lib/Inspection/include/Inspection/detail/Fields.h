@@ -32,6 +32,12 @@
 
 namespace arangodb::inspection::detail {
 
+#ifdef _MSC_VER
+#define EMPTY_BASE __declspec(empty_bases)
+#else
+#define EMPTY_BASE
+#endif
+
 struct Keep {};
 
 struct IgnoreField;
@@ -52,7 +58,7 @@ template<class Inspector, class InnerField, class Invariant>
 struct InvariantField;
 
 template<class Inspector, class Field>
-struct InvariantMixin {
+struct EMPTY_BASE InvariantMixin {
   template<class Predicate>
   [[nodiscard]] auto invariant(Predicate predicate) && {
     return InvariantField<Inspector, Field, Predicate>(
@@ -61,7 +67,7 @@ struct InvariantMixin {
 };
 
 template<class Inspector, class Field>
-struct FallbackMixin {
+struct EMPTY_BASE FallbackMixin {
   template<class U>
   [[nodiscard]] auto fallback(U&& val) && {
     static_assert(std::is_constructible_v<typename Field::value_type, U> ||
@@ -82,7 +88,7 @@ struct FallbackMixin {
 };
 
 template<class Inspector, class Field>
-struct TransformMixin {
+struct EMPTY_BASE TransformMixin {
   template<class T>
   [[nodiscard]] auto transformWith(T transformer) && {
     return TransformField<Inspector, Field, T>(
@@ -138,15 +144,15 @@ using WithTransform =
                        TransformMixin<Inspector, Inner>>;
 
 template<class Inspector, typename DerivedField>
-struct BasicField : InvariantMixin<Inspector, DerivedField>,
-                    FallbackMixin<Inspector, DerivedField>,
-                    TransformMixin<Inspector, DerivedField> {
+struct EMPTY_BASE BasicField : InvariantMixin<Inspector, DerivedField>,
+                               FallbackMixin<Inspector, DerivedField>,
+                               TransformMixin<Inspector, DerivedField> {
   explicit BasicField(std::string_view name) : name(name) {}
   std::string_view name;
 };
 
 template<class Inspector, typename T>
-struct RawField : BasicField<Inspector, RawField<Inspector, T>> {
+struct EMPTY_BASE RawField : BasicField<Inspector, RawField<Inspector, T>> {
   template<class TT>
   RawField(std::string_view name, TT&& value)
       : BasicField<Inspector, RawField>(name), value(std::forward<TT>(value)) {}
@@ -160,7 +166,7 @@ struct IgnoreField {
 };
 
 template<class Inspector, class InnerField, class FallbackValue>
-struct FallbackField
+struct EMPTY_BASE FallbackField
     : Inspector::template FallbackContainer<FallbackValue>,
       WithInvariant<Inspector,
                     FallbackField<Inspector, InnerField, FallbackValue>>,
@@ -174,7 +180,7 @@ struct FallbackField
 };
 
 template<class Inspector, class InnerField, class FallbackFactory>
-struct FallbackFactoryField
+struct EMPTY_BASE FallbackFactoryField
     : Inspector::template FallbackFactoryContainer<FallbackFactory>,
       WithInvariant<Inspector, FallbackFactoryField<Inspector, InnerField,
                                                     FallbackFactory>>,
@@ -189,7 +195,7 @@ struct FallbackFactoryField
 };
 
 template<class Inspector, class InnerField, class Invariant>
-struct InvariantField
+struct EMPTY_BASE InvariantField
     : Inspector::template InvariantContainer<Invariant>,
       WithFallback<Inspector, InvariantField<Inspector, InnerField, Invariant>>,
       WithTransform<Inspector,
@@ -202,7 +208,7 @@ struct InvariantField
 };
 
 template<class Inspector, class InnerField, class Transformer>
-struct TransformField
+struct EMPTY_BASE TransformField
     : WithInvariant<Inspector,
                     TransformField<Inspector, InnerField, Transformer>>,
       WithFallback<Inspector,
@@ -213,6 +219,8 @@ struct TransformField
   InnerField inner;
   Transformer transformer;
 };
+
+#undef EMPTY_BASE
 
 template<class T>
 struct IsRawField : std::false_type {};

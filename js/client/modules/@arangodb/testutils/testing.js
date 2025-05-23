@@ -80,6 +80,13 @@ let optionsDocumentation = [
 ];
 
 const optionsDefaults = {
+  'dumpAgencyOnError': true,
+  'agencySize': 3,
+  'agencyWaitForSync': false,
+  'agencySupervision': true,
+  'bindBroadcast': false,
+  'build': '',
+  'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
   'cleanup': true,
   'concurrency': 3,
   'duration': 10,

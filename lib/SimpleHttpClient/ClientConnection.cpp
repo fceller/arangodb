@@ -122,6 +122,13 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
     return false;
   }
 
+#if defined(__APPLE__)
+  // MSG_NOSIGNAL not supported on apple platform
+  long status = TRI_send(_socket, buffer, length, 0);
+#elif defined(_WIN32)
+  // MSG_NOSIGNAL not supported on windows platform
+  long status = TRI_send(_socket, buffer, length, 0);
+#else
   long status = TRI_send(_socket, buffer, length, MSG_NOSIGNAL);
 
   if (status < 0) {

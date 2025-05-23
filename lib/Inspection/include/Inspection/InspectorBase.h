@@ -41,6 +41,12 @@
 
 namespace arangodb::inspection {
 
+#ifdef _MSC_VER
+#define EMPTY_BASE __declspec(empty_bases)
+#else
+#define EMPTY_BASE
+#endif
+
 struct NoContext {};
 
 namespace detail {
@@ -63,7 +69,7 @@ struct ContextContainer {
 };
 
 template<>
-struct ContextContainer<NoContext> {
+struct EMPTY_BASE ContextContainer<NoContext> {
   static constexpr bool hasContext = false;
   ContextContainer() = default;
   explicit ContextContainer(NoContext const&) {}
@@ -594,5 +600,7 @@ auto InspectorBase<Derived, Context, TargetInspector>::embedFields(
   assert(res.ok());
   return std::move(insp.fields);
 }
+
+#undef EMPTY_BASE
 
 }  // namespace arangodb::inspection

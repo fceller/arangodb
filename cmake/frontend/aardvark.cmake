@@ -7,6 +7,7 @@ find_package(Yarn REQUIRED)
 
 set(FRONTEND_DESTINATION ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/react)
 
+<<<<<<< HEAD
 option(NODE_MODULES_BUNDLE "specify pre-downloaded node modules for aardvark" "")
 
 
@@ -22,13 +23,23 @@ else()
     )
 endif()
 
+=======
+if (WIN32)
+  # On Windows cmake creates a cmd script for the custom command. However, yarn itself is
+  # also a cmd script. We have to use the CALL command to run a nested batch script, because
+  # otherwise the nested batch script will terminate the _parent_ script.
+  set(YARN_PREFIX "CALL")
+else ()
+  set(YARN_PREFIX "")
+endif ()
+>>>>>>> parent of 6560fb090f1 (Remove Windows/MSVC support (#20636))
 
 add_custom_target(frontend ALL
   DEPENDS node_cache
   COMMENT "create frontend build"
   WORKING_DIRECTORY ${FRONTEND_DESTINATION}
-  COMMAND yarn install
-  COMMAND yarn build
+  COMMAND ${YARN_PREFIX} yarn install
+  COMMAND ${YARN_PREFIX} yarn build
 )
 
 add_custom_target(frontend_clean

@@ -26,13 +26,19 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/debugging.h"
 
+#if defined(_WIN32)
+#include <Windows.h>
+#endif
+
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
 
 namespace arangodb {
 
-struct CpuUsageFeature::SnapshotProvider {
+  #if defined(__linux__)
+
+  struct CpuUsageFeature::SnapshotProvider {
   SnapshotProvider();
   ~SnapshotProvider();
   SnapshotProvider(SnapshotProvider const&) = delete;
@@ -102,6 +108,45 @@ size_t CpuUsageFeature::SnapshotProvider::readStatFile(
   buffer[offset] = '\0';
   return offset;
 }
+#elif defined(_WIN32)
+struct CpuUsageFeature::SnapshotProvider {
+  bool canTakeSnapshot() const noexcept { return true; }
+
+  bool tryTakeSnapshot(CpuUsageSnapshot& result) noexcept;
+};
+
+bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(
+    CpuUsageSnapshot& result) noexcept {
+  FILETIME idleTime, kernelTime, userTime;
+  if (GetSystemTimes(&idleTime, &kernelTime, &userTime) == FALSE) {
+    return false;
+  }
+
+  auto toUInt64 = [](FILETIME const& value) {
+    ULARGE_INTEGER result;
+    result.LowPart = value.dwLowDateTime;
+    result.HighPart = value.dwHighDateTime;
+    return result.QuadPart;
+  };
+
+  result.idle = toUInt64(idleTime);
+  result.user = toUInt64(userTime);
+  // the kernel time returned by GetSystemTimes includes the amount of time the
+  // system has been idle
+  result.system = toUInt64(kernelTime) - result.idle;
+  return true;
+}
+
+#else
+struct CpuUsageFeature::SnapshotProvider {
+  bool canTakeSnapshot() const noexcept { return false; }
+
+  bool tryTakeSnapshot(CpuUsageSnapshot&) noexcept {
+    TRI_ASSERT(false);  // should never be called!
+    return false;
+  }
+};
+#endif
 
 CpuUsageFeature::CpuUsageFeature(Server& server)
     : ArangodFeature{server, *this},

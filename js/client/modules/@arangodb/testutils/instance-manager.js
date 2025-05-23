@@ -500,7 +500,108 @@ class instanceManager {
     }
     this.launchFinalize(startTime);
   }
+  printProcessInfo(startTime) {
+    if (this.options.noStartStopLogs) {
+      return;
+    }
+    print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
+    var matchPort = /.*:.*:([0-9]*)/;
+    var ports = [];
+    var processInfo = [];
+    this.arangods.forEach(arangod => {
+      let res = matchPort.exec(arangod.endpoint);
+      if (!res) {
+        return;
+      }
+      var port = res[1];
+      if (arangod.isAgent()) {
+        if (this.options.sniffAgency) {
+          ports.push('port ' + port);
+        }
+      } else if (arangod.isRole(instanceRole.dbServer)) {
+        if (this.options.sniffDBServers) {
+          ports.push('port ' + port);
+        }
+      } else {
+        ports.push('port ' + port);
+      }
+      processInfo.push('  [' + arangod.name +
+                       '] up with pid ' + arangod.pid +
+                       ' - ' + arangod.dataDir);
+    });
+    print(processInfo.join('\n') + '\n');
+  }
+  launchTcpDump(name) {
+    if (this.options.sniff === undefined || this.options.sniff === false) {
+      return true;
+    }
+    this.options.cleanup = false;
+    let device = 'lo';
+    if (platform.substr(0, 3) === 'win') {
+      device = '1';
+    }
+    if (this.options.sniffDevice !== undefined) {
+      device = this.options.sniffDevice;
+    }
 
+    let prog = 'tcpdump';
+    if (platform.substr(0, 3) === 'win') {
+      prog = 'c:/Program Files/Wireshark/tshark.exe';
+    }
+    if (this.options.sniffProgram !== undefined) {
+      prog = this.options.sniffProgram;
+    }
+    
+    let pcapFile = fs.join(this.rootDir, name + 'out.pcap');
+    let args;
+    if (prog === 'ngrep') {
+      args = ['-l', '-Wbyline', '-d', device];
+    } else {
+      args = ['-ni', device, '-s0', '-w', pcapFile];
+    }
+    let count = 0;
+    this.arangods.forEach(arangod => {
+      if (count > 0) {
+        args.push('or');
+      }
+      args.push('port');
+      args.push(arangod.port);
+      count ++;
+    });
+
+    if (this.options.sniff === 'sudo') {
+      args.unshift(prog);
+      prog = 'sudo';
+    }
+    print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
+    try {
+      this.tcpdump = executeExternal(prog, args);
+      sleep(5);
+      let exitStatus = statusExternal(this.tcpdump.pid, false);
+      if (exitStatus.status !== "RUNNING") {
+        crashUtils.GDB_OUTPUT += `Failed to launch tcpdump: ${JSON.stringify(exitStatus)} '${prog}' ${JSON.stringify(args)}`;
+        this.tcpdump = null;
+        return false;
+      }
+    } catch (x) {
+      crashUtils.GDB_OUTPUT += `Failed to launch tcpdump: ${x.message} ${prog} ${JSON.stringify(args)}`;
+      return false;
+    }
+    return true;
+  }
+  stopTcpDump() {
+    if (this.tcpdump !== null) {
+      print(CYAN + "Stopping tcpdump" + RESET);
+      killExternal(this.tcpdump.pid);
+      try {
+        statusExternal(this.tcpdump.pid, true);
+      } catch (x)
+      {
+        print(Date() + ' wasn\'t able to stop tcpdump: ' + x.message );
+      }
+      this.tcpdump = null;
+    }
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief scans the log files for important infos

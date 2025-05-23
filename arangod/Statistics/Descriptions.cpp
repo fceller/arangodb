@@ -179,7 +179,10 @@ stats::Descriptions::Descriptions(ArangodServer& server)
   _figures.emplace_back(Figure{stats::GroupType::System,
                                "virtualSize",
                                "Virtual Memory Size",
-                               "This figure contains The size of the "
+                               "On Windows, this figure contains the total "
+                               "amount of memory that the memory manager has "
+                               "committed for the arangod process. On other "
+                               "systems, this figure contains The size of the "
                                "virtual memory the process is using.",
                                stats::FigureType::Current,
                                stats::Unit::Bytes,
@@ -190,7 +193,8 @@ stats::Descriptions::Descriptions(ArangodServer& server)
                                "Minor Page Faults",
                                "The number of minor faults the process has "
                                "made which have not required loading a memory "
-                               "page from disk.",
+                               "page from disk. This figure is not reported on "
+                               "Windows.",
                                stats::FigureType::Accumulated,
                                stats::Unit::Number,
                                {}});
@@ -199,7 +203,8 @@ stats::Descriptions::Descriptions(ArangodServer& server)
       stats::GroupType::System,
       "majorPageFaults",
       "Major Page Faults",
-      "This figure contains the number of major faults the "
+      "On Windows, this figure contains the total number of page faults. On "
+      "other system, this figure contains the number of major faults the "
       "process has made which have required loading a memory page from disk.",
       stats::FigureType::Accumulated,
       stats::Unit::Number,

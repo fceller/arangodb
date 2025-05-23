@@ -714,7 +714,10 @@ inline LogContext::ValueBuilder<> LogContext::makeValue() noexcept {
 // the following attribute suppresses an UBSan false positive that reports
 // a nullptr access to the LogContext object here. it seems UBSan has issues
 // with thread-locals
-__attribute__((no_sanitize("null"))) inline LogContext&
+#ifndef _MSC_VER
+__attribute__((no_sanitize("null")))
+#endif
+inline LogContext&
 LogContext::current() noexcept {
   return _threadControlBlock._logContext;
 }

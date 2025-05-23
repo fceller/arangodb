@@ -31,6 +31,31 @@ include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
 ## LIB_ARANGO
 ################################################################################
 
+if (MSVC)
+  set(LIB_ARANGO_MSVC
+    Basics/win-utils.cpp
+    Zip/iowin32.cpp
+  )
+else ()
+  set(LIB_ARANGO_POSIX
+    Endpoint/EndpointUnixDomain.cpp
+    Endpoint/EndpointSrv.cpp
+  )
+endif ()
+
+set(LIB_ARANGO_LINENOISE
+  Utilities/LinenoiseShell.cpp
+  Utilities/LineEditor.cpp
+  Utilities/ShellBase.cpp
+)
+
+set(LIB_ARANGO_DATE
+  ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
+)
+add_definitions("-DHAS_REMOTE_API=0")
+
+add_definitions("-DARCHITECTURE_OPTIMIZATIONS=\"${ARCHITECTURE_OPTIMIZATIONS}\"")
+
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )
@@ -122,8 +147,6 @@ add_library(arango_basic_utils STATIC
         Basics/signals.cpp
         Basics/SourceLocation.cpp
         Basics/system-functions.cpp
-        Basics/terminal-utils-posix.cpp
-        Basics/threads-posix.cpp
         Basics/tri-strings.cpp
 
         Utilities/LinenoiseShell.cpp
@@ -311,6 +334,18 @@ add_library(arango_lightweight STATIC
         Random/RandomGenerator.cpp
 )
 
+if (MSVC)
+  target_sources(arango_lightweight PRIVATE
+          Basics/terminal-utils-win32.cpp
+          Basics/threads-win32.cpp
+          )
+else ()
+  target_sources(arango_lightweight PRIVATE
+          Basics/terminal-utils-posix.cpp
+          Basics/threads-posix.cpp
+          )
+endif ()
+
 target_include_directories(arango_lightweight PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # some auto-generated headers live here, like "Basics/build.h"
 target_include_directories(arango_lightweight PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
@@ -348,7 +383,11 @@ if (USE_ENTERPRISE)
 endif()
 
 add_library(arango STATIC
-  ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
+  ${LIB_ARANGO_APPLE}
+  ${LIB_ARANGO_MSVC}
+  ${LIB_ARANGO_POSIX}
+  ${LIB_ARANGO_LINENOISE}
+  ${LIB_ARANGO_DATE}
   ApplicationFeatures/ApplicationFeaturePhase.cpp
   ApplicationFeatures/BumpFileDescriptorsFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp

@@ -38,6 +38,24 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 
+#include <algorithm>
+#include <cstdint>
+#include <list>
+
+#ifdef __APPLE__
+#include <regex>
+#endif
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#include <Ws2tcpip.h>
+#else
+#include <arpa/inet.h>
+#endif
+
+#include <absl/crc/crc32c.h>
+#include <absl/strings/escaping.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 

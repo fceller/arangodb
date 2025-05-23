@@ -39,6 +39,10 @@
 #include <velocypack/Parser.h>
 #include <cmath>
 
+#ifdef _WIN32
+#undef near
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
