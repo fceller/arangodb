@@ -1,7 +1,7 @@
 add_library(arangoserver STATIC
   Actions/ActionFeature.cpp
-  Actions/actions.cpp
   Actions/RestActionHandler.cpp
+  Actions/actions.cpp
   Auth/Common.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
@@ -69,6 +69,7 @@ add_library(arangoserver STATIC
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/SslServerFeature.cpp
+  RestHandler/RestAccessTokenHandler.cpp
   RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
@@ -98,6 +99,7 @@ add_library(arangoserver STATIC
   RestHandler/RestOptionsHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestQueryPlanCacheHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
@@ -128,13 +130,14 @@ add_library(arangoserver STATIC
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FlushFeature.cpp
   RestServer/FortuneFeature.cpp
-  RestServer/InitDatabaseFeature.cpp
   RestServer/IOHeartbeatThread.cpp
+  RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
   RestServer/MaxMapCountFeature.cpp
   RestServer/NonceFeature.cpp
+  RestServer/ApiRecordingFeature.cpp
   RestServer/PrivilegeFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ServerFeature.cpp
@@ -147,17 +150,9 @@ add_library(arangoserver STATIC
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
+  RestServer/VectorIndexFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
-  Scheduler/LockfreeThreadPool.cpp
-  Scheduler/Scheduler.cpp
-  Scheduler/SchedulerFeature.cpp
-  Scheduler/SchedulerMetrics.cpp
-  Scheduler/SimpleThreadPool.cpp
-  Scheduler/SupervisedScheduler.cpp
-  Scheduler/ThreadPoolScheduler.cpp
-  Scheduler/ThreadPoolScheduler.cpp
-  Scheduler/WorkStealingThreadPool.cpp
   Sharding/ShardDistributionReporter.cpp
   Sharding/ShardingFeature.cpp
   Sharding/ShardingInfo.cpp
@@ -207,7 +202,6 @@ endif()
 target_link_libraries(arangoserver
   arango_agency
   arango_aql
-  arango_async_registry_feature
   arango_cluster_engine
   arango_cluster_methods
   arango_common_rest_handler
@@ -223,6 +217,7 @@ target_link_libraries(arangoserver
   arango_storage_engine
   arango_utils
   arango_vocbase
+  arango_scheduler
   boost_boost
   ${MSVC_LIBS})
 if (MSVC)

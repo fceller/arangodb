@@ -1,7 +1,6 @@
+import { InfoTooltip, MultiSelect } from "@arangodb/ui";
 import { FormLabel } from "@chakra-ui/react";
 import React, { useState } from "react";
-import MultiSelect from "../../../../components/select/MultiSelect";
-import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useGraph } from "../GraphContext";
 import { useNodeStartOptions } from "./useNodeStartOptions";
 import { useSetupNodeStartValues } from "./useSetupNodeStartValues";
@@ -11,7 +10,11 @@ const ParameterNodeStart = () => {
   const [inputValue, setInputValue] = useState<string>("");
 
   const { values, onRemoveValue, onAddValue } = useSetupNodeStartValues();
-  const { options } = useNodeStartOptions({ graphName, inputValue, values });
+  const { options, isLoading: isLoadingOptions } = useNodeStartOptions({
+    graphName,
+    inputValue,
+    values
+  });
 
   return (
     <>
@@ -19,6 +22,7 @@ const ParameterNodeStart = () => {
       <MultiSelect
         noOptionsMessage={() => "No nodes found"}
         isClearable={false}
+        isLoading={isLoadingOptions}
         styles={{
           container: baseStyles => {
             return { width: "240px", ...baseStyles };

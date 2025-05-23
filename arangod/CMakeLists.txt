@@ -1,4 +1,10 @@
 ################################################################################
+## FAISS
+################################################################################
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}")
+
+################################################################################
 ## global definitions
 ################################################################################
 
@@ -43,6 +49,7 @@ endif ()
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
+  ../cmake/activeCodePage.manifest
   ${ProductVersionFiles}
 )
   
@@ -104,7 +111,6 @@ get_target_property(IRESEARCH_INCLUDE
 include(arangoserver.cmake)
 add_subdirectory(Agency)
 add_subdirectory(Aql)
-add_subdirectory(AsyncRegistryServer)
 add_subdirectory(Cache)
 add_subdirectory(Cluster)
 add_subdirectory(ClusterEngine)
@@ -119,9 +125,11 @@ add_subdirectory(RestHandler)
 add_subdirectory(RestServer)
 add_subdirectory(RocksDBEngine)
 add_subdirectory(StorageEngine)
+add_subdirectory(SystemMonitor)
 add_subdirectory(Utils)
 if (USE_V8)
   add_subdirectory(V8Server)
 endif()
 add_subdirectory(VocBase)
 add_subdirectory(Zkd)
+add_subdirectory(Scheduler)

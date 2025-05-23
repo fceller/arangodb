@@ -1,6 +1,7 @@
 #!/bin/env python3
 """ the testing runner actually manages launching the processes, creating reports, etc. """
 from datetime import datetime
+import json
 import os
 from pathlib import Path
 import pprint
@@ -68,10 +69,12 @@ def zipp_this(filenames, target_dir):
 
 def testing_runner(testing_instance, this, arangosh):
     """operate one makedata instance"""
+    # pylint: disable=too-many-statements
     try:
         this.start = datetime.now(tz=None)
         ret = arangosh.run_testing(
             this.suite,
+            this.arangosh_args,
             this.args,
             15 * 60,  # 15 Minutes screen idle before timeout
             this.base_logdir,
@@ -88,7 +91,7 @@ def testing_runner(testing_instance, this, arangosh):
         this.finish = datetime.now(tz=None)
         this.delta = this.finish - this.start
         this.delta_seconds = this.delta.total_seconds()
-        logging.info("done with %s", {this.name_enum})
+        logging.info("done with %s - %s", {this.name_enum} , str(ret["rc_exit"]))
         this.crashed = (
             not this.crashed_file.exists() or this.crashed_file.read_text() == "true"
         )
@@ -136,6 +139,8 @@ def testing_runner(testing_instance, this, arangosh):
         this.delta_seconds = this.delta.total_seconds()
     finally:
         with arangosh.slot_lock:
+            with open((testing_instance.cfg.run_root / "job_to_pids.jsonl"), "a+", encoding="utf-8")  as jsonl_file:
+                jsonl_file.write(f'{json.dumps({"pid": ret["pid"], "logfile": str(this.log_file)})}\n')
             testing_instance.running_suites.remove(this.name_enum)
         testing_instance.done_job(this.parallelity)
 
@@ -312,7 +317,7 @@ class TestingRunner:
         used_slots = 0
         counter = 0
         if len(self.scenarios) == 0:
-            raise Exception("no valid scenarios loaded")
+            raise ValueError("no valid scenarios loaded")
         some_scenario = self.scenarios[0]
         if not some_scenario.base_logdir.exists():
             some_scenario.base_logdir.mkdir()
@@ -475,76 +480,77 @@ class TestingRunner:
                 len(core_files_list),
                 core_max_count,
             )
-            return
-        self.crashed = True
-        self.success = False
-        core_zip_dir = get_workspace() / "coredumps"
-        core_zip_dir.mkdir(parents=True, exist_ok=True)
-        zip_slots = psutil.cpu_count(logical=False)
-        count = 0
-        zip_slot_array = []
-        for _ in range(zip_slots):
-            zip_slot_array.append([])
-        for one_file in core_files_list:
-            if one_file.exists():
-                zip_slot_array[count % zip_slots].append(one_file)
-                count += 1
-        zippers = []
-        logging.info("coredump launching zipper sub processes %s", zip_slot_array)
-        for zip_slot in zip_slot_array:
-            if len(zip_slot) > 0:
-                proc = Process(target=zipp_this, args=(zip_slot, core_zip_dir))
-                proc.start()
-                zippers.append(proc)
-        for zipper in zippers:
-            zipper.join()
-        logging.info("compressing files done")
+        else:
+            self.crashed = True
+            self.success = False
+            core_zip_dir = get_workspace() / "coredumps"
+            core_zip_dir.mkdir(parents=True, exist_ok=True)
+            zip_slots = psutil.cpu_count(logical=False)
+            count = 0
+            zip_slot_array = []
+            for _ in range(zip_slots):
+                zip_slot_array.append([])
+            for one_file in core_files_list:
+                if one_file.exists():
+                    zip_slot_array[count % zip_slots].append(one_file)
+                    count += 1
+            zippers = []
+            logging.info("coredump launching zipper sub processes %s", zip_slot_array)
+            for zip_slot in zip_slot_array:
+                if len(zip_slot) > 0:
+                    proc = Process(target=zipp_this, args=(zip_slot, core_zip_dir))
+                    proc.start()
+                    zippers.append(proc)
+            for zipper in zippers:
+                zipper.join()
+            logging.info("compressing files done")
 
-        for one_file in core_files_list:
-            if one_file.is_file():
-                one_file.unlink(missing_ok=True)
+            for one_file in core_files_list:
+                if one_file.is_file():
+                    one_file.unlink(missing_ok=True)
 
-        crash_report_file = get_workspace() / datetime.now(tz=None).strftime(
-            f"crashreport-{self.cfg.datetime_format}"
-        )
-        logging.info(
-            "creating crashreport: %s with %s",
-            str(crash_report_file),
-            str(core_files_list),
-        )
-        sys.stdout.flush()
-        try:
-            shutil.make_archive(
+            crash_report_file = get_workspace() / datetime.now(tz=None).strftime(
+                f"crashreport-{self.cfg.datetime_format}"
+            )
+            logging.info(
+                "creating crashreport: %s with %s",
                 str(crash_report_file),
-                "tar",
-                (core_zip_dir / "..").resolve(),
-                core_zip_dir.name,
-                True,
+                str(core_files_list),
             )
-        except Exception as ex:
-            logging.info("Failed to create binaries zip: %s", str(ex))
-            self.append_report_txt("Failed to create binaries zip: " + str(ex))
+            sys.stdout.flush()
+            try:
+                shutil.make_archive(
+                    str(crash_report_file),
+                    "tar",
+                    (core_zip_dir / "..").resolve(),
+                    core_zip_dir.name,
+                    True,
+                )
+            except Exception as ex:
+                logging.info("Failed to create binaries zip: %s", str(ex))
+                self.append_report_txt("Failed to create binaries zip: " + str(ex))
 
-        self.cleanup_unneeded_binary_files()
-        binary_report_file = get_workspace() / datetime.now(tz=None).strftime(
-            f"binaries-{self.cfg.datetime_format}"
-        )
-        logging.info(
-            "creating crashreport binary support zip: %s", str(binary_report_file)
-        )
-        sys.stdout.flush()
-        try:
-            shutil.make_archive(
-                str(binary_report_file),
-                ZIPFORMAT,
-                (self.cfg.bin_dir / "..").resolve(),
-                self.cfg.bin_dir.name,
-                True,
+            self.cleanup_unneeded_binary_files()
+            shutil.rmtree(str(core_zip_dir), ignore_errors=True)
+        if self.crashed:
+            binary_report_file = get_workspace() / datetime.now(tz=None).strftime(
+                f"binaries-{self.cfg.datetime_format}"
             )
-        except Exception as ex:
-            logging.info("Failed to create crashdump zip: %s", str(ex))
-            self.append_report_txt("Failed to create crashdump zip: " + str(ex))
-        shutil.rmtree(str(core_zip_dir), ignore_errors=True)
+            logging.info(
+                "creating crashreport binary support zip: %s", str(binary_report_file)
+            )
+            sys.stdout.flush()
+            try:
+                shutil.make_archive(
+                    str(binary_report_file),
+                    ZIPFORMAT,
+                    (self.cfg.bin_dir / "..").resolve(),
+                    self.cfg.bin_dir.name,
+                    True,
+                )
+            except Exception as ex:
+                logging.info("Failed to create crashdump zip: %s", str(ex))
+                self.append_report_txt("Failed to create crashdump zip: " + str(ex))
 
     def generate_test_report(self):
         """regular testresults zip"""
@@ -672,6 +678,7 @@ class TestingRunner:
                             "--testBuckets",
                             f"{num_buckets}/{i}",
                         ],
+                        test["arangosh_args"],
                         test["priority"],
                         parallelity,
                         test["flags"],
@@ -684,6 +691,7 @@ class TestingRunner:
                     name,
                     test["suite"],
                     [*args],
+                    test["arangosh_args"],
                     test["priority"],
                     parallelity,
                     test["flags"],

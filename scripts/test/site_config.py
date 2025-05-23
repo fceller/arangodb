@@ -76,12 +76,23 @@ os.environ["TEMP"] = str(TEMP)
 os.environ["TMP"] = str(TEMP)
 
 
+for var in [
+        "CIRCLE_OIDC_TOKEN",
+        "AWS_DEFAULT_REGION",
+        "CIRCLE_OIDC_TOKEN_V2",
+        "SCCACHE_REGION",
+]:
+    if var in os.environ:
+        del os.environ[var]
+
+
 class SiteConfig:
     """this environment - adapted to oskar defaults"""
 
     # pylint: disable=too-few-public-methods disable=too-many-instance-attributes
     def __init__(self, base_source_dir, build_dir):
         # pylint: disable=too-many-statements disable=too-many-branches
+        self.basedir = Path.cwd()
         self.datetime_format = "%Y-%m-%dT%H%M%SZ"
         self.trace = False
         self.portbase = 7000

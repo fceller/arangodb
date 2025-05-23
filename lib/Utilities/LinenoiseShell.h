@@ -53,6 +53,12 @@ class LinenoiseShell final : public ShellBase {
   /// @brief whether or not the shell implementation supports colors
   //////////////////////////////////////////////////////////////////////////////
 
-  bool supportsColors() const override final { return true; }
+  bool supportsColors() const override final {
+#ifdef _WIN32
+    return false;
+#else
+    return true;
+#endif
+  }
 };
 }  // namespace arangodb

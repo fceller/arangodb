@@ -1,9 +1,8 @@
+import { InfoTooltip } from "@arangodb/ui";
 import { Checkbox, Grid, HStack, Stack } from "@chakra-ui/react";
-
 import { useFormikContext } from "formik";
 import { get } from "lodash";
 import React from "react";
-import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useEditViewContext } from "../../editView/EditViewContext";
 import { ArangoSearchViewPropertiesType } from "../../View.types";
 import { AnalyzersDropdown } from "./AnalyzersDropdown";
@@ -12,7 +11,7 @@ import { LinksBreadCrumb } from "./LinksBreadCrumb";
 import { useFieldPath, useLinkModifiers } from "./useLinkModifiers";
 
 export const LinksDetails = () => {
-  const { currentLink, currentField } = useEditViewContext();
+  const { currentLink, currentField, isFormDisabled } = useEditViewContext();
   const { values } = useFormikContext<ArangoSearchViewPropertiesType>();
   const { fieldPath } = useFieldPath();
   const hasValue = currentLink
@@ -40,21 +39,23 @@ export const LinksDetails = () => {
             id="includeAllFields"
             label="Include All Fields"
             tooltip="Process all document attributes."
+            isDisabled={isFormDisabled}
           />
           <CheckboxField
             id="trackListPositions"
             label="Track List Positions"
             tooltip="For array values track the value position in arrays."
+            isDisabled={isFormDisabled}
           />
-          <StoreIDValuesCheckbox />
+          <StoreIDValuesCheckbox isDisabled={isFormDisabled} />
           <CheckboxField
             id="cache"
             label="Cache"
-            isDisabled={!window.frontendConfig.isEnterprise}
+            isDisabled={!window.frontendConfig.isEnterprise || isFormDisabled}
             tooltip={
               window.frontendConfig.isEnterprise
               ? "Always cache field normalization values in memory."
-              : "Field normalization value caching is available in Enterprise plans."
+              : "Field normalization value caching is available in the Enterprise Edition."
             }
           />
           {!isFieldView && (
@@ -62,6 +63,7 @@ export const LinksDetails = () => {
               id="inBackground"
               label="In Background"
               tooltip="If selected, no exclusive lock is used on the source collection during View index creation."
+              isDisabled={isFormDisabled}
             />
           )}
         </Stack>
@@ -70,7 +72,7 @@ export const LinksDetails = () => {
   );
 };
 
-const StoreIDValuesCheckbox = () => {
+const StoreIDValuesCheckbox = ({ isDisabled }: { isDisabled?: boolean }) => {
   const id = "storeValues";
   const { setCurrentLinkValue, getCurrentLinkValueDefault } = useLinkModifiers();
   const isChecked = getCurrentLinkValueDefault([id]) === "id" ? true : false;
@@ -80,6 +82,7 @@ const StoreIDValuesCheckbox = () => {
         isChecked={isChecked}
         margin="0"
         borderColor="gray.400"
+        isDisabled={isDisabled}
         onChange={() => {
           const newChecked = !isChecked;
           setCurrentLinkValue({ id: [id], value: newChecked ? "id" : "none" });

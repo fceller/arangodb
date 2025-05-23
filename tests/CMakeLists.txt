@@ -43,6 +43,10 @@ if (USE_V8)
   endforeach()
 endif ()
 
+if (WINDOWS)
+  set(RCFILE Maintenance/json.rc)
+endif ()
+
 add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/ClusterInfoMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.cpp
@@ -62,6 +66,7 @@ add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
+  ../cmake/activeCodePage.manifest
   main.cpp)
 
 target_include_directories(arango_tests_basics
@@ -127,8 +132,10 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Executor/ExecutorTestHelper.cpp
   Aql/Executor/FilterExecutorTest.cpp
   Aql/Executor/GatherExecutorCommonTest.cpp
+  Aql/Executor/GroupedSortExecutorTest.cpp
   Aql/Executor/HashedCollectExecutorTest.cpp
   Aql/Executor/IdExecutorTest.cpp
+  Aql/Executor/IndexAggregateScanExecutorTest.cpp
   Aql/Executor/InsertExecutorTest.cpp
   Aql/Executor/LimitExecutorTest.cpp
   Aql/Executor/NoResultsExecutorTest.cpp
@@ -293,6 +300,8 @@ if (LINUX)
   endif ()
 endif ()
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}")
+
 add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
@@ -324,8 +333,10 @@ endif()
 target_link_libraries(arangodbtests
   arango
   arango_tests_basics
+  arango_tests_forest
   arango_tests_replication2
   arango_tests_replication2_pure
+  arango_tests_task_registry
   arango_tests_graph
   arango_tests_futures
   arango_tests_zkd
@@ -414,5 +425,7 @@ endforeach()
 
 add_subdirectory(Actor)
 add_subdirectory(Async)
+add_subdirectory(Containers)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
+add_subdirectory(TaskMonitoring)

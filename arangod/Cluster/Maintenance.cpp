@@ -78,7 +78,7 @@ using namespace arangodb::basics::StringUtils;
 
 static std::unordered_set<std::string> const alwaysRemoveProperties({ID, NAME});
 static std::unordered_set<std::string> const selectivityEstimates(
-    {SELECTIVITY_ESTIMATE});
+    {SELECTIVITY_ESTIMATE, "trainedData"});
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
 
@@ -1253,7 +1253,7 @@ arangodb::Result arangodb::maintenance::executePlan(
       action->toVelocyPack(report);
     }
     if (!action->isRunEvenIfDuplicate()) {
-      feature.addAction(std::move(action), false);
+      feature.addAction(std::move(action));
     } else {
       TRI_ASSERT(action->has(SHARD));
       TRI_ASSERT(action->has(DATABASE));
@@ -1265,7 +1265,7 @@ arangodb::Result arangodb::maintenance::executePlan(
       bool ok = feature.lockShard(shardName, action);
       if (ok) {
         try {
-          Result res = feature.addAction(std::move(action), false);
+          Result res = feature.addAction(std::move(action));
           if (res.fail()) {
             feature.unlockShard(shardName);
           }
@@ -2675,6 +2675,9 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
             needsResyncBecauseOfRestart = true;
           }
         }
+        TRI_ASSERT(cservers.length() > 0);
+        auto currentLeader = cservers[0].stringView();
+        auto planLeader = pservers[0].stringView();
 
         if (cservers.length() == 0 ||
             cservers[0].stringView().starts_with("_")) {
@@ -2695,6 +2698,50 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
             << "detected synchronize shard: myself = " << serverId
             << " current servers = " << cservers.toJson()
             << " local theLeader = " << theLeader.toJson();
+
+        if (currentLeader.starts_with("_") || planLeader != currentLeader) {
+          // Do not attempt to sync if the server in current is still resigned
+          // or not equal to the planned leader.
+          // Thus, we never
+          // 1. sync with a server resigned in plan.
+          //    (Leadership is about to change)
+          // 2. if plan is not equal to current
+          //    (probably going to change as well)
+          // 3. if current is resigned
+          //    (new leader hasn't confirmed leadership yet)
+
+          LOG_TOPIC("2dba7", INFO, Logger::MAINTENANCE)
+              << "refuse to synchronize shard " << dbname << "/" << colname
+              << "/" << shname
+              << " with a resigned leader in current - myself = " << serverId
+              << " plan servers = " << pservers.toJson()
+              << " current servers = " << cservers.toJson();
+          continue;
+        }
+
+        LOG_TOPIC("3d7a8", DEBUG, Logger::MAINTENANCE)
+            << "detected synchronize shard" << dbname << "/" << colname << "/"
+            << shname << ": myself = " << serverId
+            << " plan servers = " << pservers.toJson()
+            << " current servers = " << cservers.toJson()
+            << " local theLeader = " << theLeader.toJson();
+
+        if (!feature.increaseNumberOfSyncShardActionsQueued()) {
+          // Need to revisit this database on next run:
+          makeDirty.emplace(dbname);
+          LOG_TOPIC("25342", DEBUG, Logger::MAINTENANCE)
+              << "Not scheduling necessary SynchronizeShard actions because "
+                 "too many are already in flight.";
+          continue;
+        }
+
+        // From here on, we must be very careful, if we do not manage to
+        // schedule the action below, we must decrease the number of sync shard
+        // actions queued again! Otherwise we lose counter values and
+        // eventually, we no longer schedule SynchronizeShard actions at all!
+        ScopeGuard scopeGuard([&feature]() noexcept {
+          feature.decreaseNumberOfSyncShardActionsQueued();
+        });
 
         std::string leader = pservers[0].copyString();
         std::string forcedResync =
@@ -2719,8 +2766,12 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         bool ok = feature.lockShard(shardName, description);
         TRI_ASSERT(ok);
         try {
-          Result res = feature.addAction(description, false);
-          if (res.fail()) {
+          Result res = feature.addAction(description);
+          if (res.ok()) {
+            scopeGuard.cancel();  // Here we can be sure that the action is
+                                  // queued and will eventually be executed,
+                                  // then we decrease the counter again!
+          } else {
             feature.unlockShard(shardName);
           }
         } catch (std::exception const& exc) {

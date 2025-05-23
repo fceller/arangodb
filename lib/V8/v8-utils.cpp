@@ -29,6 +29,16 @@
 
 #include "Basics/operating-system.h"
 
+#ifdef _WIN32
+#include <WinSock2.h>  // must be before windows.h
+#include <conio.h>
+#include <fcntl.h>
+#include <io.h>
+#include <windef.h>
+#include <windows.h>
+#include "Basics/win-utils.h"
+#endif
+
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
@@ -1490,10 +1500,18 @@ static void JS_Getline(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+#ifdef _WIN32
+  std::wstring wline;
+  _setmode(_fileno(stdin), _O_U16TEXT);
+  std::getline(std::wcin, wline);
+
+  TRI_V8_RETURN_STD_WSTRING(wline);
+#else
   std::string line;
   getline(std::cin, line);
 
   TRI_V8_RETURN_STD_STRING(line);
+#endif
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2748,6 +2766,18 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("pollStdin()");
   }
 
+  bool hasData = false;
+#ifdef _WIN32
+  auto hin = ::GetStdHandle(STD_INPUT_HANDLE);
+  if (GetFileType(hin) == FILE_TYPE_PIPE) {
+    DWORD numBytes = 0;
+    if (PeekNamedPipe(hin, nullptr, 0, nullptr, &numBytes, nullptr)) {
+      hasData = numBytes > 0;
+    }
+  } else {
+    hasData = _kbhit() != 0;
+  }
+#else
   struct timeval tv;
   fd_set fds;
   tv.tv_sec = 0;
@@ -2755,7 +2785,8 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
   FD_ZERO(&fds);
   FD_SET(STDIN_FILENO, &fds);
   select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv);
-  bool hasData = FD_ISSET(STDIN_FILENO, &fds);
+  hasData = FD_ISSET(STDIN_FILENO, &fds);
+#endif
 
   if (hasData) {
     char c[1024] = {0};
@@ -3325,9 +3356,17 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("append(<filename>, <content>)");
   }
 
+#if _WIN32  // the wintendo needs utf16 filenames
+  v8::String::Value str(isolate, args[0]);
+  std::wstring name{reinterpret_cast<wchar_t*>(*str),
+                    static_cast<size_t>(str.length())};
+  TRI_Utf8ValueNFC utf8Str(isolate, args[0]);
+  std::string utf8Name(*utf8Str, utf8Str.length());
+#else
   TRI_Utf8ValueNFC str(isolate, args[0]);
   std::string name(*str, str.length());
   std::string const& utf8Name = name;
+#endif
 
   if (name.empty()) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a non-empty string");
@@ -3393,9 +3432,17 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("write(<filename>, <content>)");
   }
+#if _WIN32  // the wintendo needs utf16 filenames
+  v8::String::Value str(isolate, args[0]);
+  std::wstring name{reinterpret_cast<wchar_t*>(*str),
+                    static_cast<size_t>(str.length())};
+  TRI_Utf8ValueNFC utf8Str(isolate, args[0]);
+  std::string utf8Name(*utf8Str, utf8Str.length());
+#else
   TRI_Utf8ValueNFC str(isolate, args[0]);
   std::string name(*str, str.length());
   std::string const& utf8Name = name;
+#endif
 
   if (name.length() == 0) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
@@ -3609,7 +3656,12 @@ static void JS_RemoveRecursiveDirectory(
 
     std::string const path(*name);
 
+#ifdef _WIN32
+    // windows paths are case-insensitive
+    if (!TRI_CaseEqualString(path.c_str(), tempPath.c_str(), tempPath.size())) {
+#else
     if (!path.starts_with(tempPath)) {
+#endif
       std::string errorMessage = std::string("directory to be removed [") +
                                  path + "] is outside of temporary path [" +
                                  tempPath + "]";
@@ -4033,12 +4085,14 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
     gc = TRI_ObjectToBoolean(isolate, args[1]);
   }
 
+  TRI_GET_GLOBALS();
   if (gc) {
+    v8g->_inForcedCollect = true;
     TRI_RunGarbageCollectionV8(isolate, n);
+    v8g->_inForcedCollect = false;
   }
 
   // wait without gc
-  TRI_GET_GLOBALS();
   Result res = ::doSleep(n, v8g->_server);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -4261,6 +4315,7 @@ static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
       .FromMaybe(false);
 
   // Now report about possible stdin and stdout pipes:
+#ifndef _WIN32
   if (external._readPipe >= 0) {
     result
         ->Set(context, TRI_V8_ASCII_STRING(isolate, "readPipe"),
@@ -4273,6 +4328,26 @@ static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
               v8::Number::New(isolate, external._writePipe))
         .FromMaybe(false);
   }
+#else
+  if (external._readPipe != INVALID_HANDLE_VALUE) {
+    auto fn = getFileNameFromHandle(external._readPipe);
+    if (fn.length() > 0) {
+      result
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "readPipe"),
+                TRI_V8_STD_STRING(isolate, fn))
+          .FromMaybe(false);
+    }
+  }
+  if (external._writePipe != INVALID_HANDLE_VALUE) {
+    auto fn = getFileNameFromHandle(external._writePipe);
+    if (fn.length() > 0) {
+      result
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "writePipe"),
+                TRI_V8_STD_STRING(isolate, fn))
+          .FromMaybe(false);
+    }
+  }
+#endif
   TRI_V8_TRY_CATCH_END;
 }
 
@@ -4834,7 +4909,11 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   ExternalId pid;
 
+#ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+#else
+  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
+#endif
   if (pid._pid == 0) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to kill 0");
@@ -4879,7 +4958,11 @@ static void JS_SuspendExternal(
 
   ExternalId pid;
 
+#ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+#else
+  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
+#endif
   if (pid._pid == 0) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "not allowed to suspend the invoking process!");
@@ -4918,7 +5001,11 @@ static void JS_ContinueExternal(
 
   ExternalId pid;
 
+#ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+#else
+  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
+#endif
 
   // return the result
   if (TRI_ContinueExternalProcess(pid)) {
@@ -5615,7 +5702,11 @@ v8::Handle<v8::Array> static V8PathList(v8::Isolate* isolate,
                                         std::string const& modules) {
   v8::EscapableHandleScope scope(isolate);
   auto context = TRI_IGETC;
+#ifdef _WIN32
+  std::vector<std::string> paths = StringUtils::split(modules, ';');
+#else
   std::vector<std::string> paths = StringUtils::split(modules, ";:");
+#endif
 
   uint32_t const n = static_cast<uint32_t>(paths.size());
   v8::Handle<v8::Array> result = v8::Array::New(isolate, n);

@@ -32,6 +32,7 @@
   const arangodb = require("@arangodb");
   const db = arangodb.db;
   const { getCompleteMetricsValues } = require('@arangodb/test-helper');
+  const isWindows = (require("internal").platform.substr(0, 3) === 'win');
   const collectionName = "test";
   const viewName = "testView";
 
@@ -122,7 +123,7 @@
 
           assertEqual(scheduler_memory, num_worker_threads * 4 * 1000000, {scheduler_memory, num_worker_threads});
 
-          if (readers > 0 && consolidations > 0 && descriptors > 0 && mapped > 0) {
+          if (readers > 0 && consolidations > 0 && descriptors > 0 && (isWindows || mapped > 0)) {
             break;
           }
           require("internal").sleep(0.25);
@@ -131,7 +132,9 @@
         assertTrue(readers > 0);
         assertTrue(consolidations > 0);
         assertTrue(descriptors > 0);
-        assertTrue(mapped > 0);
+        if (!isWindows) {
+          assertTrue(mapped > 0);
+        }
 
         {
           db._view(viewName).properties({commitIntervalMsec: 0});
@@ -153,7 +156,7 @@
             "arangodb_scheduler_num_worker_threads"
           ]);
 
-          if (readers === 0 && consolidations === 0 && descriptors === 0 && mapped === 0) {
+          if (readers === 0 && consolidations === 0 && descriptors === 0 && (isWindows || mapped === 0)) {
             break;
           }
           require("internal").sleep(0.25);

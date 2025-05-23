@@ -31,6 +31,11 @@
 #include <unistd.h>
 #endif
 
+#if _WIN32
+#include <iostream>
+#include "Basics/win-utils.h"
+#endif
+
 #include "LoggerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -176,7 +181,11 @@ You can adjust the parameter settings at runtime using the
   options
       ->addOption("--log.output,-o",
                   "Log destination(s), e.g. "
+#ifdef _WIN32
+                  "file://C:\\path\\to\\file"
+#else
                   "file:///path/to/file"
+#endif
                   " (any occurrence of $PID is replaced with the process ID).",
                   new VectorParameter<StringParameter>(&_output))
       .setLongDescription(R"(This option allows you to direct the global or
@@ -219,7 +228,8 @@ applied as well.
 
 If you specify `--log.file-group <name>`, then any newly created log file tries
 to use `<name>` as the group name. Note that you have to be a member of that
-group. Otherwise, the group ownership is not changed.
+group. Otherwise, the group ownership is not changed. This option is only
+available under Linux and macOS. It is not available under Windows.
 
 The old `--log.file` option is still available for convenience. It is a
 shortcut for the more general option `--log.output file://filename`.
@@ -238,15 +248,16 @@ by a semicolon:
   for (auto const& level : levels) {
     topicsVector.emplace_back(level.first->name());
   }
+  std::sort(topicsVector.begin(), topicsVector.end());
   std::string topicsJoined = StringUtils::join(topicsVector, ", ");
 
   options
       ->addOption("--log.level,-l",
                   "Set the topic-specific log level, using `--log.level level` "
                   "for the general topic or `--log.level topic=level` for the "
-                  "specified topic (can be specified multiple times).\n"
+                  "specified topic (can be specified multiple times).\n\n"
                   "Available log levels: fatal, error, warning, info, debug, "
-                  "trace.\n"
+                  "trace.\n\n"
                   "Available log topics: all, " +
                       topicsJoined + ".",
                   new VectorParameter<StringParameter>(&_levels))
@@ -385,7 +396,7 @@ contains a single character with the server's role. The roles are:
 
   options->addOption(
       "--log.file-mode",
-      "mode to use for new log file, umask will be applied as well",
+      "The mode to use for a new log file. The umask is applied as well.",
       new StringParameter(&_fileMode));
 
   if (_threaded) {
@@ -443,10 +454,10 @@ The object attributes produced for each log message are:
 | `message`  | the actual log message payload)");
 
 #ifdef ARANGODB_HAVE_SETGID
-  options->addOption(
-      "--log.file-group",
-      "group to use for new log file, user must be a member of this group",
-      new StringParameter(&_fileGroup));
+  options->addOption("--log.file-group",
+                     "The group to use for a new log file. The user must be a "
+                     "member of this group.",
+                     new StringParameter(&_fileGroup));
 #endif
 
   options
@@ -459,7 +470,7 @@ The object attributes produced for each log message are:
 `2020-07-23T09:46:03Z --> [17493] INFO ...`)");
 
   options->addOption(
-      "--log.file", "shortcut for '--log.output file://<filename>'",
+      "--log.file", "Shortcut for `--log.output file://<filename>`",
       new StringParameter(&_file),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
@@ -472,7 +483,7 @@ The object attributes produced for each log message are:
 
   options->addOption(
       "--log.shorten-filenames",
-      "shorten filenames in log output (use with --log.line-number)",
+      "Shorten filenames in log output (use with `--log.line-number`).",
       new BooleanParameter(&_shortenFilenames),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
@@ -688,6 +699,13 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void LoggerFeature::prepare() {
+#if _WIN32
+  if (!TRI_InitWindowsEventLog()) {
+    std::cerr << "failed to init event log" << std::endl;
+    FATAL_ERROR_EXIT();
+  }
+#endif
+
   // set maximum length for each log entry
   Logger::defaultLogGroup().maxLogEntryLength(
       std::max<uint32_t>(256, _maxEntryLength));
@@ -712,16 +730,26 @@ void LoggerFeature::prepare() {
   Logger::setLogRequestParameters(_logRequestParameters);
   Logger::setUseJson(_useJson);
 
+  bool shouldLogToStd = false;
   for (auto const& definition : _output) {
     if (_supervisor && definition.starts_with("file://")) {
       Logger::addAppender(Logger::defaultLogGroup(),
                           definition + ".supervisor");
     } else {
       Logger::addAppender(Logger::defaultLogGroup(), definition);
+      if (shouldLogToStd == false) {
+        shouldLogToStd = definition == "+" || definition == "-";
+      }
     }
   }
 
-  if (_foregroundTty) {
+  // if the user defines `--log.output=+`(stderr) explicitly in an environment
+  // with a terminal this code will add also an appender to stdout, leading to 2
+  // logline per log this will ensure that its only logging once to
+  // std(err/out). If the double log line is still desired it is still possible
+  // to do it via chain arguments:
+  // `--log.output=+ --log.output=-`
+  if (_foregroundTty && !shouldLogToStd) {
     Logger::addAppender(Logger::defaultLogGroup(), "-");
   }
 

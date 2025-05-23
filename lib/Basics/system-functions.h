@@ -26,6 +26,21 @@
 #include <ctime>
 #include <string>
 
+#include "Basics/Common.h"
+
+#ifdef ARANGODB_MISSING_MEMRCHR
+void* memrchr(void const* block, int c, size_t size);
+#endif
+
+#ifdef _WIN32
+void* memmem(void const* haystack, size_t haystackLength, void const* needle,
+             size_t needleLength);
+#endif
+
+#ifdef TRI_HAVE_WIN32_GETTIMEOFDAY
+int gettimeofday(struct timeval* tv, void* tz);
+#endif
+
 // safe localtime
 void TRI_localtime(time_t, struct tm*);
 

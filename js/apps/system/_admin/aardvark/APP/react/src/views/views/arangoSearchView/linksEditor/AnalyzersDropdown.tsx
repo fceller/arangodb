@@ -1,11 +1,13 @@
+import { MultiSelect } from "@arangodb/ui";
 import { FormLabel } from "@chakra-ui/react";
 import { AnalyzerDescription } from "arangojs/analyzer";
 import React, { useEffect, useState } from "react";
-import MultiSelect from "../../../../components/select/MultiSelect";
 import { getCurrentDB } from "../../../../utils/arangoClient";
 import { useLinkModifiers } from "./useLinkModifiers";
+import { useEditViewContext } from "../../editView/EditViewContext";
 
 export const AnalyzersDropdown = () => {
+  const { isFormDisabled } = useEditViewContext();
   const analyzersOptions = useFetchAnalyzers();
   const options = analyzersOptions.map(analyzer => ({
     label: analyzer.name,
@@ -36,6 +38,7 @@ export const AnalyzersDropdown = () => {
     <>
       <FormLabel htmlFor="analyzers">Analyzers</FormLabel>
       <MultiSelect
+        isDisabled={isFormDisabled}
         options={options}
         value={analyzers}
         inputId="analyzers"

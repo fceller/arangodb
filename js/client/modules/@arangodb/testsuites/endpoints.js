@@ -238,7 +238,7 @@ class endpointRunner extends trs.runInArangoshRunner {
       },
 
       unix: {
-        skip: function () { return obj.options.skipEndpointsUnix; },
+        skip: function () { return obj.options.skipEndpointsUnix || platform.substr(0, 3) === 'win'; },
         protocol: 'unix',
         serverArgs: function () {
           // use a random filename
@@ -387,7 +387,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['skipEndpointsIpv6'] = false;
   opts['skipEndpointsIpv4'] = false;
   opts['skipEndpointsSSL'] = false;
-  opts['skipEndpointsUnix'] = false;
+  opts['skipEndpointsUnix'] = (platform.substr(0, 3) === 'win');
 
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);

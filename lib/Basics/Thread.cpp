@@ -28,6 +28,7 @@
 #include <thread>
 
 #include "Basics/operating-system.h"
+#include "Basics/threads-posix.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -60,14 +61,23 @@ using namespace arangodb::basics;
 
 namespace {
 
+#ifndef _WIN32
 // ever-increasing counter for thread numbers.
 // not used on Windows
 std::atomic<uint64_t> NEXT_THREAD_ID(1);
+#endif
 
 // helper struct to assign and retrieve a thread id
 struct ThreadNumber {
   ThreadNumber() noexcept
-      : value(NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst)) {}
+      :
+#ifdef _WIN32
+        value(static_cast<uint64_t>(GetCurrentThreadId())) {
+  }
+#else
+        value(NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst)) {
+  }
+#endif
 
   uint64_t get() const noexcept { return value; }
 
@@ -80,6 +90,10 @@ struct ThreadNumber {
 /// @brief local thread number
 static thread_local ::ThreadNumber LOCAL_THREAD_NUMBER{};
 static thread_local char const* LOCAL_THREAD_NAME = nullptr;
+
+ThreadNameFetcher::ThreadNameFetcher(TRI_tid_t id) noexcept {
+  pthread_getname_np(id, _buffer, 32);
+}
 
 // retrieve the current thread's name. the string view will
 // remain valid as long as the ThreadNameFetcher remains valid.
@@ -148,7 +162,21 @@ void Thread::startThread(void* arg) {
 }
 
 /// @brief returns the process id
-TRI_pid_t Thread::currentProcessId() { return getpid(); }
+TRI_pid_t Thread::currentProcessId() {
+#ifdef _WIN32
+  return _getpid();
+#else
+  return getpid();
+#endif
+}
+
+/// @brief returns the kernel thread id
+#ifdef HAVE_SYS_GETTID
+TRI_pid_t Thread::currentKernelThreadId() { return gettid(); }
+#else
+#include <sys/syscall.h>
+TRI_pid_t Thread::currentKernelThreadId() { return syscall(SYS_gettid); }
+#endif
 
 /// @brief returns the thread process id
 uint64_t Thread::currentThreadNumber() noexcept {
@@ -157,10 +185,14 @@ uint64_t Thread::currentThreadNumber() noexcept {
 
 /// @brief returns the thread id
 TRI_tid_t Thread::currentThreadId() {
+#ifdef TRI_HAVE_WIN32_THREADS
+  return GetCurrentThreadId();
+#else
 #ifdef TRI_HAVE_POSIX_THREADS
   return pthread_self();
 #else
 #error "Thread::currentThreadId not implemented"
+#endif
 #endif
 }
 

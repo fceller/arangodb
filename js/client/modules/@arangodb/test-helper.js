@@ -332,7 +332,7 @@ const buildCode = function(dbname, key, command, cn, duration) {
   fs.write(file, `
 (function() {
 // For chaos tests additional 10 secs might be not enough, so add 3 minutes buffer
-require('internal').SetGlobalExecutionDeadlineTo((${duration} + 180) * 1000);
+require('internal').SetGlobalExecutionDeadlineTo(${duration} + 180);
 let tries = 0;
 while (true) {
   ++tries;
@@ -494,6 +494,8 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
           if (status === 'RUNNING') {
             debug(`forcefully killing test client with pid ${client.pid}`);
             internal.killExternal(client.pid, 9 /*SIGKILL*/);
+            let status = internal.statusExternal(client.pid).status;
+            debug(`killed test client with pid ${client.pid}: ${status}`);            
           }
         } catch (err) { }
       }
@@ -943,3 +945,11 @@ exports.insertManyDocumentsIntoCollection
   }
 };
 
+exports.executeExternalAndWaitWithSanitizer = function (executable, args, tmpFileName, options = global.instanceManager.options) {
+  let sanHnd = new sanHandler(executable, options);
+  let tmpMgr = new tmpDirMngr(fs.join(tmpFileName), options);
+  sanHnd.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
+  let actualRc = internal.executeExternalAndWait(executable, args, false, 0, sanHnd.getSanOptions());
+  sanHnd.fetchSanFileAfterExit(actualRc.pid);
+  return actualRc;
+};

@@ -116,6 +116,7 @@ function readGdbFileFiltered(gdbOutputFile, options) {
     let stack = [];
     let longStack = [];
     let moreMessages = [];
+    let countPrinted = 0;
     for (let j = 0; j < maxBuffer; j++) {
       if (buf[j] === 10) { // \n
         var line = buf.utf8Slice(lineStart, j);
@@ -165,9 +166,13 @@ function readGdbFileFiltered(gdbOutputFile, options) {
             inStack = false;
           }
         } else {
-            GDB_OUTPUT += line.trim() + '\n';
+          GDB_OUTPUT += line.trim() + '\n';
+          countPrinted += 1;
         }
       }
+    }
+    if (countPrinted === 0) {
+      GDB_OUTPUT += "All stacks filtered\n";
     }
   } catch (ex) {
     let err="failed to read " + gdbOutputFile + " -> " + ex + '\n' + ex.stack;
@@ -261,6 +266,370 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief analyzes a core dump using lldb (macos)
+// /
+// / We assume the system has core files in /cores/, and we have a lldb.
+// //////////////////////////////////////////////////////////////////////////////
+
+function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
+  let lldbOutputFile = fs.getTempFile();
+
+  let command;
+  command = '(';
+  command += 'printf \'bt \n\n';
+  // LLDB doesn't have an equivilant of `bt full` so we try to show the upper
+  // most 5 frames with all variables
+  for (var i = 0; i < 5; i++) {
+    command += 'frame variable\\n up \\n';
+  }
+  command += ' thread backtrace all\\n\';';
+  command += 'sleep 10;';
+  command += 'echo quit;';
+  command += 'sleep 2';
+  command += ') | lldb ' + storeArangodPath;
+  command += ' -c /cores/core.' + pid;
+  command += ' > ' + lldbOutputFile + ' 2>&1';
+  const args = ['-c', command];
+  print("launching LLDB in foreground: " + JSON.stringify(args));
+
+  sleep(5);
+  executeExternalAndWait('/bin/bash', args);
+  GDB_OUTPUT += `--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
+  let thisDump = fs.read(lldbOutputFile);
+  GDB_OUTPUT += thisDump;
+  if (options.extremeVerbosity === true) {
+    print(thisDump);
+  }
+  return 'lldb ' + storeArangodPath + ' -c /cores/core.' + pid;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief analyzes a core dump using lldb (macos)
+// /
+// / We assume the system has core files in /cores/, and we have a lldb.
+// //////////////////////////////////////////////////////////////////////////////
+
+function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid, generateCoreDump) {
+  let lldbOutputFile = fs.getTempFile();
+  let gcore = '';
+  if (generateCoreDump) {
+    if (options.coreDirectory === '') {
+      gcore = ` process save-core core.${instanceInfo.pid}\\n`;
+    } else {
+      gcore = ` process save-core ${options.coreDirectory}/core.${instanceInfo.pid}\\n`;
+    }
+  }
+
+  let command;
+  command = '(';
+  command += 'printf \'bt \n\n';
+  // LLDB doesn't have an equivilant of `bt full` so we try to show the upper
+  // most 5 frames with all variables
+  for (var i = 0; i < 5; i++) {
+    command += 'frame variable\\n up \\n';
+  }
+  command += ` thread backtrace all\\n`;
+  command += gcore;
+  command += ` kill\\n';`;
+  command += 'sleep 10;';
+  command += 'echo quit;';
+  command += 'sleep 2';
+  command += ') | lldb ';
+  command += ` --attach-pid ${pid} `;
+  command += storeArangodPath;
+  command += ' > ' + lldbOutputFile + ' 2>&1';
+  const args = ['-c', command];
+  print("launching LLDB in background: " + JSON.stringify(command));
+  return {
+    pid: executeExternal('/bin/bash', args),
+    file: lldbOutputFile,
+    hint:  'lldb ' + storeArangodPath + ' -c /cores/core.' + pid,
+    verbosePrint: true
+  };
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief analyzes a core dump using cdb (Windows)
+// /  cdb is part of the WinDBG package.
+// //////////////////////////////////////////////////////////////////////////////
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check whether process does bad on the wintendo
+// //////////////////////////////////////////////////////////////////////////////
+
+function runProcdump (options, instanceInfo, rootDir, pid, instantDump = false) {
+  let procdumpArgs = [ ];
+  let dumpFile = fs.join(rootDir, 'core_' + pid + '.dmp');
+  if (options.exceptionFilter != null) {
+    procdumpArgs = [
+      '-accepteula',
+      '-64',
+    ];
+    if (!instantDump) {
+      procdumpArgs.push('-e');
+      procdumpArgs.push(options.exceptionCount);
+    }
+    let filters = options.exceptionFilter.split(',');
+    for (let which in filters) {
+      procdumpArgs.push('-f');
+      procdumpArgs.push(filters[which]);
+    }
+    procdumpArgs.push('-ma');
+    procdumpArgs.push(pid);
+    procdumpArgs.push(dumpFile);
+  } else {
+    procdumpArgs = [
+      '-accepteula',
+    ];
+    if (!instantDump) {
+      procdumpArgs.push('-e');
+    }
+    procdumpArgs.push('-ma');
+    procdumpArgs.push(pid);
+    procdumpArgs.push(dumpFile);
+  }
+  try {
+    if (options.extremeVerbosity) {
+      print(Date() + " Starting procdump: " + JSON.stringify(procdumpArgs));
+    }
+    instanceInfo.coreFilePattern = dumpFile;
+    if (instantDump) {
+      // Wait for procdump to have written the dump before we attempt to kill the process:
+      instanceInfo.monitor = executeExternalAndWait('procdump', procdumpArgs);
+    } else {
+      instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+      // try to give procdump a little time to catch up with the process
+      sleep(0.25);
+      let status = statusExternal(instanceInfo.monitor.pid, false);
+      if (status.hasOwnProperty('signal')) {
+        print(RED + 'procdump didn\'t come up: ' + JSON.stringify(status));
+        instanceInfo.monitor.status = status;
+        return false;
+      }
+    }
+  } catch (x) {
+    print(Date() + ' failed to start procdump - is it installed?');
+    // throw x;
+    return false;
+  }
+  return true;
+}
+
+function stopProcdump (options, instanceInfo, force = false) {
+  if (instanceInfo.hasOwnProperty('monitor') &&
+      instanceInfo.monitor.pid !== null) {
+    if (force) {
+      print(Date() + " sending TERM to procdump to make it exit");
+      instanceInfo.monitor.status = killExternal(instanceInfo.monitor.pid, termSignal);
+    } else {
+      print(Date() + " waiting for procdump to exit");
+      statusExternal(instanceInfo.monitor.pid, true);
+    }
+    instanceInfo.monitor.pid = null;
+  }
+}
+
+function calculateMonitorValues(options, instanceInfo, pid, cmd) {
+  
+  if (platform.substr(0, 3) === 'win') {
+    if (process.env.hasOwnProperty('COREDIR')) {
+      instanceInfo.coreFilePattern = fs.join(process.env['COREDIR'],
+                                             'core_' + pid.toString() + '.dmp');
+      instanceInfo.coreDirectory = process.env['COREDIR'];
+    } else if (process.env.hasOwnProperty('WORKSPACE') &&
+        fs.isDirectory(fs.join(process.env['WORKSPACE'], 'core'))) {
+      let spcmd = fs.normalize(cmd).split(fs.pathSeparator);
+      let executable = spcmd[spcmd.length - 1];
+      instanceInfo.coreFilePattern = fs.join(process.env['WORKSPACE'],
+                                             'core',
+                                             executable + '.' + pid.toString() + '.dmp');
+      instanceInfo.coreDirectory = fs.join(process.env['WORKSPACE'], 'core');
+    }
+  }
+}
+function isEnabledWindowsMonitor(options, instanceInfo, pid, cmd) {
+  calculateMonitorValues(options, instanceInfo, pid, cmd);
+  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
+    return true;
+  }
+  return false;
+}
+
+function readCdbFileFiltered(cdbOutputFile) {
+  try {
+    const filters = JSON.parse(fs.read(
+      fs.join(pu.JS_DIR,
+              'client/modules/@arangodb/testutils',
+              'filter_cdb_stacks.json')));
+    const buf = fs.readBuffer(cdbOutputFile);
+    let lineStart = 0;
+    let maxBuffer = buf.length;
+    let inStack = false;
+    let stack = [];
+    let longStack = [];
+    for (let j = 0; j < maxBuffer; j++) {
+      if (buf[j] === 10) { // \n
+        var line = buf.asciiSlice(lineStart, j);
+        lineStart = j + 1;
+
+        if (line.search('RetAddr') === 0) {
+          inStack = true;
+        }
+        if (inStack) {
+          if ((line.search(' 000') !== -1) ||
+              (line.search('--------') !== -1)) {
+            // cut off left part with addresses:
+            line = line.substring(98);
+            longStack.push(line);
+            // cut off arguments only for filter string::
+            let plusPos = line.search('\\+');
+            if (plusPos > 0) {
+              line = line.substring(0, plusPos);
+            }
+            if (line.length > 1) {
+              stack.push(line);
+            }
+          }
+          if (line.length === 0) {
+            if (!filterStack(stack, filters)) {
+              print("did not filter this stack: ");
+              print(stack);
+              longStack.forEach(line => {
+                GDB_OUTPUT += line.trim() + '\n';
+              });
+              GDB_OUTPUT += '\n';
+            }
+            
+            stack = [];
+            longStack = [];
+            inStack = false;
+          }
+        } else {
+          if (line.search('NatVis') === -1) {
+            GDB_OUTPUT += line.trim() + '\n';
+          }
+        }
+      }
+    }
+  } catch (ex) {
+    let err="failed to read " + cdbOutputFile + " -> " + ex + '\n' + ex.stack;
+    print(err);
+  }
+}
+
+const core_rx = new RegExp('core_.*_.*.dmp');
+function analyzeCoreDumpWindows (instanceInfo) {
+  let cdbOutputFile = fs.getTempFile();
+
+  if (!fs.exists(instanceInfo.coreFilePattern)) {
+    const m = 'core file ' + instanceInfo.coreFilePattern + ' not found?';
+    instanceInfo.coreFilePattern = null;
+    // locate arangods crash handler self generated minidump files:
+    fs.list(instanceInfo.coreDirectory).forEach(file => {
+      if (file.match(core_rx) !== null) {
+        instanceInfo.coreFilePattern = fs.join(instanceInfo.coreDirectory, file);
+      }
+    });
+    if (instanceInfo.coreDirectory === null) {
+      print(m);
+      return;
+    }
+  }
+  print('found minidump file: ' + instanceInfo.coreFilePattern);
+
+  const dbgCmds = [
+    '.logopen ' + cdbOutputFile,
+    '!analyze -v', // print verbose analysis
+    'dv', // analyze local variables (if)
+    '~*kb', // print all threads stack traces
+    'q' // quit the debugger
+  ];
+
+  const args = [
+    '-z',
+    instanceInfo.coreFilePattern,
+    '-lines',
+    '-logo',
+    cdbOutputFile,
+    '-c',
+    dbgCmds.join('; ')
+  ];
+
+  sleep(5);
+  print('running cdb in foreground: ' + JSON.stringify(args));
+  process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
+  executeExternalAndWait('cdb', args);
+  GDB_OUTPUT += `--------------------------------------------------------------------------------
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
+  // cdb will output to stdout anyways, so we can't turn this off here.
+  readCdbFileFiltered(cdbOutputFile);
+  return 'cdb ' + args.join(' ');
+}
+
+function generateCoreDumpWindows (instanceInfo) {
+  let cdbOutputFile = fs.getTempFile();
+  let dbgCmds = [
+    '.logopen ' + cdbOutputFile,
+    '!analyze -v', // print verbose analysis
+    'dv', // analyze local variables (if)
+    '~*kb', // print all threads stack traces
+    `.dump /mFhtipcy ${instanceInfo.coreFilePattern}`, // write a compact dump file
+    '.kill', // terminate the debugged process
+    'q' // quit the debugger
+  ];
+
+  const args = [
+    '-p',
+    instanceInfo.pid,
+    '-lines',
+    '-logo',
+    cdbOutputFile,
+    '-c',
+    dbgCmds.join('; ')
+  ];
+
+  print('running cdb in background: ' + JSON.stringify(args));
+  process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
+  return {
+    pid: executeExternal('cdb', args),
+    file: cdbOutputFile,
+    hint: 'cdb ' + args.join(' '),
+    verbosePrint: false
+  };
+}
+
+function checkMonitorAlive (binary, instanceInfo, options, res) {
+  if (instanceInfo.hasOwnProperty('monitor') ) {
+    // Windows: wait for procdump to do its job...
+    if (!instanceInfo.monitor.hasOwnProperty('status')) {
+      let rc = statusExternal(instanceInfo.monitor.pid, false);
+      if (rc.status !== 'RUNNING') {
+        print(RED + "Procdump of " + instanceInfo.pid + " is gone: " + rc + RESET);
+        instanceInfo.monitor = rc;
+        // procdump doesn't set proper exit codes, check for
+        // dumps that may exist:
+        if (fs.exists(instanceInfo.coreFilePattern)) {
+          print("checkMonitorAlive: marking crashy");
+          instanceInfo.monitor.monitorExited = true;
+          instanceInfo.monitor.pid = null;
+          pu.serverCrashed = true;
+          options.cleanup = false;
+          instanceInfo['exitStatus'] = {};
+          analyzeCrash(binary, instanceInfo, options, "the process monitor commanded error");
+          Object.assign(instanceInfo.exitStatus,
+                        killExternal(instanceInfo.pid, abortSignal));
+          return false;
+        }
+      }
+    }
+    else return instanceInfo.monitor.exitStatus;
+  }
+  return true;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief the bad has happened, tell it the user and try to gather more
 // /        information about the incident.
 // //////////////////////////////////////////////////////////////////////////////
@@ -343,7 +712,25 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
   sleep(5);
 
   let hint = '';
-  hint = analyzeCoreDump(instanceInfo, options, binary, instanceInfo.pid);
+  if (platform.substr(0, 3) === 'win') {
+    if (instanceInfo.hasOwnProperty('monitor')) {
+      stopProcdump(options, instanceInfo);
+    }
+    if (!instanceInfo.hasOwnProperty('coreFilePattern') ) {
+      print("your process wasn't monitored by procdump, won't have a coredump!");
+      instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
+      return;
+    } else if (!fs.exists(instanceInfo.coreFilePattern)) {
+      print("No coredump exists at " + instanceInfo.coreFilePattern);
+      instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
+      return;
+    }
+    hint = analyzeCoreDumpWindows(instanceInfo);
+  } else if (platform === 'darwin') {
+    hint = analyzeCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid);
+  } else {
+    hint = analyzeCoreDump(instanceInfo, options, binary, instanceInfo.pid);
+  }
   instanceInfo.exitStatus.gdbHint = 'Run debugger with "' + hint + '"';
 
 }
@@ -364,9 +751,18 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
     stats.virtualSize  < 310000000 &&
     stats.residentSize < 140000000
   ) || stats.virtualSize === 0);
-  if (options.test !== undefined) {
+  if (options.coreAbort || options.test !== undefined) {
     print(CYAN + instanceInfo.name + " - in single test mode, hard killing." + RESET);
     instanceInfo.exitStatus = killExternal(instanceInfo.pid, termSignal);
+  } else if (platform.substr(0, 3) === 'win') {
+    if (!options.disableMonitor) {
+      stopProcdump(options, instanceInfo, true);
+    }
+    instanceInfo.debuggerInfo = generateCoreDumpWindows(instanceInfo);
+    instanceInfo.exitStatus = { status: 'TERMINATED'};
+  } else if (platform === 'darwin') {
+    instanceInfo.debuggerInfo = generateCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
+    instanceInfo.exitStatus = { status: 'TERMINATED'};
   } else {
     instanceInfo.debuggerInfo = generateCoreDumpGDB(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
@@ -413,10 +809,33 @@ function aggregateDebugger(instanceInfo, options) {
 --------------------------------------------------------------------------------
 Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
 
-  readGdbFileFiltered(instanceInfo.debuggerInfo.file, options);
+  if (platform.substr(0, 3) === 'win') {
+    readCdbFileFiltered(instanceInfo.debuggerInfo.file);
+  } else if (platform === 'darwin') {
+    const buf = fs.readBuffer(instanceInfo.debuggerInfo.file);
+    let lineStart = 0;
+    let maxBuffer = buf.length;
+
+    for (let j = 0; j < maxBuffer; j++) {
+      if (buf[j] === 10) { // \n
+        const line = buf.asciiSlice(lineStart, j);
+        lineStart = j + 1;
+        if (line.search('bytes of data for memory region at') !== -1) {
+          continue;
+        }
+        GDB_OUTPUT += line + '\n';
+        if (options.extremeVerbosity === true && instanceInfo.debuggerInfo.verbosePrint) {
+          print(line);
+        }
+      }
+    }
+  } else {
+    readGdbFileFiltered(instanceInfo.debuggerInfo.file);
+  }
   return instanceInfo.debuggerInfo.hint;
 }
 
+exports.readGdbFileFiltered = readGdbFileFiltered;
 exports.aggregateDebugger = aggregateDebugger;
 exports.generateCrashDump = generateCrashDump;
 exports.analyzeCrash = analyzeCrash;

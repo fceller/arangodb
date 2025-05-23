@@ -2,7 +2,11 @@
  "info": {
   "description": "ArangoDB REST API Interface",
   "title": "ArangoDB",
+<<<<<<< HEAD
   "version": "3.12.3-1"
+=======
+  "version": "3.12.5-devel"
+>>>>>>> Add-windows-support-back-to-3.12
  },
  "openapi": "3.1.0",
  "paths": {

@@ -29,7 +29,7 @@ ERROR_FILE_EXISTS,27,"file exists","Will be raised when a file already exists."
 ERROR_LOCKED,28,"locked","Will be raised when a resource or an operation is locked."
 ERROR_DEADLOCK,29,"deadlock detected","Will be raised when a deadlock is detected when accessing collections."
 ERROR_SHUTTING_DOWN,30,"shutdown in progress","Will be raised when a call cannot succeed because a server shutdown is already in progress."
-ERROR_ONLY_ENTERPRISE,31,"only enterprise version","Will be raised when an Enterprise Edition feature is requested from the Community Edition."
+ERROR_ONLY_ENTERPRISE,31,"only enterprise version","Will be raised when a feature is requested that is implemented in the non-public enterprise code and thus not available in custom builds."
 ERROR_RESOURCE_LIMIT,32,"resource limit exceeded","Will be raised when the resources used by an operation exceed the configured maximum value."
 ERROR_ARANGO_ICU_ERROR,33,"icu error: %s","will be raised if ICU operations failed."
 ERROR_CANNOT_READ_FILE,34,"cannot read file","Will be raised when a file cannot be read."
@@ -248,6 +248,7 @@ ERROR_QUERY_BIND_PARAMETERS_INVALID,1550,"invalid structure of bind parameters",
 ERROR_QUERY_BIND_PARAMETER_MISSING,1551,"no value specified for declared bind parameter '%s'","Will be raised when a bind parameter was declared in the query but the query is being executed with no value for that parameter."
 ERROR_QUERY_BIND_PARAMETER_UNDECLARED,1552,"bind parameter '%s' was not declared in the query","Will be raised when a value gets specified for an undeclared bind parameter."
 ERROR_QUERY_BIND_PARAMETER_TYPE,1553,"bind parameter '%s' has an invalid value or type","Will be raised when a bind parameter has an invalid value or type."
+ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,1554,"failed vector search","APPROX_NEAR function could not apply vector search, either the vector index is missing or the query optimization could not apply vector index."
 ERROR_QUERY_INVALID_ARITHMETIC_VALUE,1561,"invalid arithmetic value","Will be raised when a non-numeric value is used in an arithmetic operation."
 ERROR_QUERY_DIVISION_BY_ZERO,1562,"division by zero","Will be raised when there is an attempt to divide by zero."
 ERROR_QUERY_ARRAY_EXPECTED,1563,"array expected","Will be raised when a non-array operand is used for an operation that expects an array argument operand."
@@ -272,6 +273,7 @@ ERROR_QUERY_FUNCTION_INVALID_NAME,1580,"invalid user function name","Will be rai
 ERROR_QUERY_FUNCTION_INVALID_CODE,1581,"invalid user function code","Will be raised when a user function is registered with invalid code."
 ERROR_QUERY_FUNCTION_NOT_FOUND,1582,"user function '%s()' not found","Will be raised when a user function is accessed but not found."
 ERROR_QUERY_FUNCTION_RUNTIME_ERROR,1583,"user function runtime error: %s","Will be raised when a user function throws a runtime exception."
+ERROR_QUERY_NOT_ELIGIBLE_FOR_PLAN_CACHING,1584,"query is not eligible for plan caching","Will be raised when a query is not eligible for plan caching and yet, the usePlanCache option was set to true."
 
 ################################################################################
 ## AQL query registry errors

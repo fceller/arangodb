@@ -30,6 +30,7 @@
 #include "Agency/TransactionBuilder.h"
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/QueryPlanCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -379,11 +380,15 @@ inline arangodb::AgencyOperation SetOldEntry(
 }  // namespace
 }  // namespace arangodb
 
+#ifdef _WIN32
+// turn off warnings about too long type name for debug symbols blabla in MSVC
+// only...
+#pragma warning(disable : 4503)
+#endif
+
 using namespace arangodb;
 using namespace cluster;
 using namespace methods;
-
-namespace StringUtils = basics::StringUtils;
 
 class ClusterInfo::SyncerThread final
     : public arangodb::ServerThread<ArangodServer> {
@@ -396,19 +401,26 @@ class ClusterInfo::SyncerThread final
   void run() override;
   bool start();
   void sendNews() noexcept;
-  void waitForNews() noexcept;
 
  private:
   auto call() noexcept -> std::optional<consensus::index_t>;
   futures::Future<futures::Unit> fetchUpdates();
+  class Synchronization {
+   public:
+    void sendNews() noexcept;
+    void waitForNews() noexcept;
 
-  std::mutex _m;
-  std::condition_variable _cv;
-  bool _news;
+   private:
+    std::mutex _m;
+    std::condition_variable _cv;
+    bool _news;
+  };
 
   std::string _section;
   std::function<consensus::index_t()> _f;
   AgencyCache& _agencyCache;
+  std::shared_ptr<Synchronization> _synchronization =
+      std::make_shared<Synchronization>();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -463,6 +475,8 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _currentMemoryUsage(0),
       _plannedCollections(_resourceMonitor),
       _newPlannedCollections(_resourceMonitor),
+      _collectionNameBlockers(_resourceMonitor),
+      _newCollectionNameBlockers(_resourceMonitor),
       _shards(_resourceMonitor),
       _shardsToPlanServers(_resourceMonitor),
       _shardToName(_resourceMonitor),
@@ -930,26 +944,24 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     if (changeSet.rest != nullptr) {  // Rest
       newPlan[std::string_view{}] = changeSet.rest;
     }
-  }
 
-  // For ArangoSearch views we need to get access to immediately created views
-  // in order to allow links to be created correctly.
-  // For the scenario above, we track such views in '_newPlannedViews' member
-  // which is supposed to be empty before and after 'ClusterInfo::loadPlan()'
-  // execution. In addition, we do the following "trick" to provide access to
-  // '_newPlannedViews' from outside 'ClusterInfo': in case if
-  // 'ClusterInfo::getView' has been called from within 'ClusterInfo::loadPlan',
-  // we redirect caller to search view in
-  // '_newPlannedViews' member instead of '_plannedViews'
+    // For ArangoSearch views we need to get access to immediately created views
+    // in order to allow links to be created correctly.
+    // For the scenario above, we track such views in '_newPlannedViews' member
+    // which is supposed to be empty before and after 'ClusterInfo::loadPlan()'
+    // execution. In addition, we do the following "trick" to provide access to
+    // '_newPlannedViews' from outside 'ClusterInfo': in case if
+    // 'ClusterInfo::getView' has been called from within
+    // 'ClusterInfo::loadPlan', we redirect caller to search view in
+    // '_newPlannedViews' member instead of '_plannedViews'
 
-  // set plan loader
-  {
-    READ_LOCKER(guard, _planProt.lock);
     // Create a copy, since we might not visit all databases
     _newPlannedViews = _plannedViews;
     _newPlannedCollections = _plannedCollections;
-    _planLoader = std::this_thread::get_id();
+    _newCollectionNameBlockers = _collectionNameBlockers;
     _currentCleanups.clear();
+    // set plan loader
+    _planLoader = std::this_thread::get_id();
   }
 
   // ensure we'll eventually reset plan loader
@@ -957,6 +969,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     _planLoader = std::thread::id();
     _newPlannedViews.clear();
     _newPlannedCollections.clear();
+    _newCollectionNameBlockers.clear();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto diff = clock::now() - start;
@@ -1044,8 +1057,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
             AgencyCommHelper::path(), "Plan", "Collections", name};
         if (plan->slice()[0].hasKey(colPath)) {
           for (auto col : VPackObjectIterator(plan->slice()[0].get(colPath))) {
-            if (col.value.hasKey("shards")) {
-              for (auto shard : VPackObjectIterator(col.value.get("shards"))) {
+            if (auto shards = col.value.get("shards"); shards.isObject()) {
+              for (auto shard : VPackObjectIterator(shards)) {
                 auto const& shardName = shard.key.copyString();
                 ShardID shardID{shardName};
                 newShards.erase(shardName);
@@ -1187,9 +1200,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         continue;
       }
 
-      for (auto const& viewPairSlice :
-           velocypack::ObjectIterator(viewsSlice, true)) {
-        auto const& viewSlice = viewPairSlice.value;
+      for (auto viewPairSlice : velocypack::ObjectIterator(viewsSlice, true)) {
+        auto viewSlice = viewPairSlice.value;
 
         if (!viewSlice.isObject()) {
           LOG_TOPIC("2487b", INFO, Logger::AGENCY)
@@ -1297,7 +1309,6 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
       // cannot find vocbase for defined analyzers (allow empty analyzers for
       // missing vocbase)
       planValid &= !analyzerSlice.length();
-
       continue;
     }
 
@@ -1471,6 +1482,11 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         }
         _newPlannedCollections.erase(it);
       }
+      if (auto it = _newCollectionNameBlockers.find(
+              pmr::DatabaseID(databaseName, _resourceMonitor));
+          it != _newCollectionNameBlockers.end()) {
+        _newCollectionNameBlockers.erase(it);
+      }
       continue;
     }
 
@@ -1497,7 +1513,13 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
       continue;
     }
 
+    if (ServerState::instance()->isCoordinator()) {
+      // invalidate query plan caches for every changed database.
+      vocbase->queryPlanCache().invalidateAll();
+    }
+
     auto databaseCollections = allocateShared<DatabaseCollections>();
+    auto blockedCollectionNames = allocateShared<DatabaseBlockers>();
 
     // an iterator to all collections in the current database (from the previous
     // round) we can safely keep this iterator around because we hold the
@@ -1639,6 +1661,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
           // register with name as well as with id:
           databaseCollections->try_emplace(collectionName, cwh);
           databaseCollections->try_emplace(collectionId, cwh);
+        } else {
+          blockedCollectionNames->emplace(collectionName);
         }
 
         auto shardIDs = newCollection->shardIds();
@@ -1766,6 +1790,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     }
     _newPlannedCollections.insert_or_assign(databaseName,
                                             std::move(databaseCollections));
+    _newCollectionNameBlockers.insert_or_assign(
+        databaseName, std::move(blockedCollectionNames));
   }
 
   // Ensure "search-alias" views are being created AFTER collections
@@ -1883,6 +1909,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
 
   if (swapCollections) {
     _plannedCollections.swap(_newPlannedCollections);
+    _collectionNameBlockers.swap(_newCollectionNameBlockers);
     _shards.swap(newShards);
     _shardsToPlanServers.swap(newShardsToPlanServers);
     _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
@@ -2431,11 +2458,14 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
     // We will protect against deleted database with Preconditions
     return {_planVersion};
   }
+  auto blockedCollList = _collectionNameBlockers.find(databaseName);
 
   auto viewList = _plannedViews.find(databaseName);
   for (auto const& name : names) {
     if (colList->second->contains(name) ||
-        (viewList != _plannedViews.end() && viewList->second.contains(name))) {
+        (viewList != _plannedViews.end() && viewList->second.contains(name)) ||
+        (blockedCollList != _collectionNameBlockers.end() &&
+         blockedCollList->second->contains(name))) {
       // Either a Collection or a view is known with this name. Disallow it.
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                     absl::StrCat("duplicate collection name '", name, "'"));
@@ -4788,13 +4818,13 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                   -> std::optional<std::tuple<Result, consensus::index_t>> {
                 if (servers.isNone()) {
                   return std::make_tuple(
-                      Result{
-                          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                          fmt::format(
-                              "Database or collection ({}/{}) gone in Current "
-                              "while waiting for leader of shard {} (raft "
-                              "index {})",
-                              *database, collection, shardId, index)},
+                      Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                             fmt::format(
+                                 "Database or collection ({}/{}) gone in "
+                                 "Current "
+                                 "while waiting for leader of shard {} (raft "
+                                 "index {})",
+                                 *database, collection, shardId, index)},
                       index);
                 }
 
@@ -5841,6 +5871,10 @@ auto ClusterInfo::SyncerThread::call() noexcept
 }
 
 void ClusterInfo::SyncerThread::sendNews() noexcept {
+  _synchronization->sendNews();
+}
+
+void ClusterInfo::SyncerThread::Synchronization::sendNews() noexcept {
   {
     std::lock_guard lk(_m);
     _news = true;
@@ -5848,7 +5882,7 @@ void ClusterInfo::SyncerThread::sendNews() noexcept {
   _cv.notify_one();
 }
 
-void ClusterInfo::SyncerThread::waitForNews() noexcept {
+void ClusterInfo::SyncerThread::Synchronization::waitForNews() noexcept {
   {
     std::unique_lock lk(_m);
     _cv.wait(lk, [&] { return _news; });
@@ -5857,13 +5891,15 @@ void ClusterInfo::SyncerThread::waitForNews() noexcept {
 }
 
 void ClusterInfo::SyncerThread::run() {
-  auto const sendNewsCb = [this](auto&&) noexcept { sendNews(); };
+  auto const sendNewsCb = [sync = _synchronization](auto&&) noexcept {
+    sync->sendNews();
+  };
 
   for (auto nextIndex = consensus::index_t{1}; !isStopping(); ++nextIndex) {
     _agencyCache.waitFor(nextIndex, AgencyCache::Executor::Direct)
         .thenFinal(sendNewsCb);
 
-    waitForNews();
+    _synchronization->waitForNews();
 
     // We update on every change; our _f (loadPlan/loadCurrent) decide for
     // themselves whether they need to do a real update. This way they can at

@@ -42,7 +42,9 @@
 #endif
 
 // unreachable code marker
-#if defined(__GNUC__) || defined(__GNUG__)
+#if defined(_MSC_VER)
+#define ADB_UNREACHABLE __assume(false)
+#elif defined(__GNUC__) || defined(__GNUG__)
 #define ADB_UNREACHABLE __builtin_unreachable()
 #elif defined(__clang__)
 #define ADB_UNREACHABLE __builtin_unreachable()
@@ -75,6 +77,8 @@
 // pretty function name macro
 #if defined(__clang__) || defined(__GNUC__)
 #define ARANGODB_PRETTY_FUNCTION __PRETTY_FUNCTION__
+#elif defined(_MSC_VER)
+#define ARANGODB_PRETTY_FUNCTION __FUNCSIG__
 #else
 #define ARANGODB_PRETTY_FUNCTION __func__
 #endif

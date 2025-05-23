@@ -51,6 +51,12 @@
 
 #include <velocypack/Builder.h>
 
+#ifdef _WIN32
+// turn off warnings about too long type name for debug symbols blabla in MSVC
+// only...
+#pragma warning(disable : 4503)
+#endif
+
 using namespace arangodb;
 using namespace arangodb::aql;
 

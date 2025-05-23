@@ -97,6 +97,7 @@ class MaintenanceFeature;
 class MaxMapCountFeature;
 class NetworkFeature;
 class NonceFeature;
+class ApiRecordingFeature;
 class OptionsCheckFeature;
 class PrivilegeFeature;
 class QueryRegistryFeature;
@@ -141,7 +142,10 @@ class RocksDBEngine;
 class RocksDBIndexCacheRefillFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
-
+class VectorIndexFeature;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class ProcessEnvironmentFeature;
+#endif
 namespace transaction {
 
 class ManagerFeature;
@@ -201,6 +205,7 @@ using ArangodFeaturesList = TypeList<
     VersionFeature,
     ActionFeature,
     AgencyFeature,
+    ApiRecordingFeature,
     AqlFeature,
     async_registry::Feature,
     AuthenticationFeature,
@@ -253,6 +258,10 @@ using ArangodFeaturesList = TypeList<
     ReplicationMetricsFeature,
     ReplicationTimeoutFeature,
     SchedulerFeature,
+    VectorIndexFeature,
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    ProcessEnvironmentFeature,
+#endif
 #ifdef USE_V8
     ScriptFeature,
 #endif
@@ -285,6 +294,9 @@ using ArangodFeaturesList = TypeList<
     RocksDBIndexCacheRefillFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,
+#ifdef _WIN32
+    WindowsServiceFeature,
+#endif
 #ifdef TRI_HAVE_GETRLIMIT
     FileDescriptorsFeature,
 #endif

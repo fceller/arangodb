@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include "Async/async.h"
+#include "Futures/Future.h"
 #include "Basics/Result.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -63,7 +65,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   explicit RestImportHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
-  RestStatus execute() override final;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
   char const* name() const override final { return "RestImportHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
@@ -102,31 +104,24 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// each line of the input stream contains an individual JSON object
   //////////////////////////////////////////////////////////////////////////////
 
-  bool createFromJson(std::string const&);
-  bool createFromVPack(std::string const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates documents by JSON objects
-  /// the input stream is one big JSON array containing all documents
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool createByDocumentsList();
+  futures::Future<futures::Unit> createFromJson(std::string const&);
+  futures::Future<futures::Unit> createFromVPack(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a documents from key/value lists
   //////////////////////////////////////////////////////////////////////////////
 
-  bool createFromKeyValueList();
+  futures::Future<futures::Unit> createFromKeyValueList();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief perform the actual import (insert/update/replace) operations
   //////////////////////////////////////////////////////////////////////////////
 
-  Result performImport(SingleCollectionTransaction& trx,
-                       RestImportResult& result,
-                       std::string const& collectionName,
-                       VPackBuilder const& babies, bool complete,
-                       OperationOptions const& opOptions);
+  async<Result> performImport(SingleCollectionTransaction& trx,
+                              RestImportResult& result,
+                              std::string const& collectionName,
+                              VPackBuilder const& babies, bool complete,
+                              OperationOptions const& opOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates the result

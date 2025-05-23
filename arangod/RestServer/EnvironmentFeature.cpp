@@ -111,6 +111,15 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // ignore any errors as the log output is just informational
   }
+#elif _WIN32
+  // TODO: improve Windows version detection
+  _operatingSystem = "windows";
+#elif __APPLE__
+  // TODO: improve MacOS version detection
+  _operatingSystem = "macos";
+#else
+  _operatingSystem = "unknown";
+#endif
 
   // find parent process id and name
   std::string parent;
