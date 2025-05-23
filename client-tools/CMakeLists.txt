@@ -37,7 +37,7 @@ add_custom_target(client-tools
             arangobench
             arangovpack)
 
-if (USE_V8)
+if (TARGET arangosh)
   add_dependencies(client-tools arangosh)
 endif ()
 
