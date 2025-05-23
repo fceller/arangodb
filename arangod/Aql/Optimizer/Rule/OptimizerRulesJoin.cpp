@@ -1062,9 +1062,11 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                 }
 
                 computedUseKeyFields = std::move(idxOffset.getKeyFields());
+#ifdef FIXWINDOWS
                 computedConstantFields =
                     std::move(idxOffset.getConstantFields());
                 isUniqueStream = idxOffset.isUniqueStream;
+#endif
               } else {
                 // if no constants have been found, we'll stick to the
                 // defaults.

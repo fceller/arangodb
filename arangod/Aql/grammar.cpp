@@ -1188,10 +1188,11 @@ static const yytype_int16 yyrline[] =
 #define YY_ACCESSING_SYMBOL(State) YY_CAST (yysymbol_kind_t, yystos[State])
 
 #if 1
+#ifdef FIXWINDOWS
 /* The user-facing name of the symbol whose (internal) number is
    YYSYMBOL.  No bounds checking.  */
 static const char *yysymbol_name (yysymbol_kind_t yysymbol) YY_ATTRIBUTE_UNUSED;
-
+#endif
 /* YYTNAME[SYMBOL-NUM] -- String name of the symbol SYMBOL-NUM.
    First, the terminals, then, starting at YYNTOKENS, nonterminals.  */
 static const char *const yytname[] =
@@ -1257,11 +1258,13 @@ static const char *const yytname[] =
   "variable_name", YY_NULLPTR
 };
 
+#ifdef FIXWINDOWS
 static const char *
 yysymbol_name (yysymbol_kind_t yysymbol)
 {
   return yytname[yysymbol];
 }
+#endif
 #endif
 
 #define YYPACT_NINF (-459)
