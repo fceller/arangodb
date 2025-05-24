@@ -67,8 +67,7 @@ RUN git config --global --add safe.directory C:/build/*
 # Set environment variables
 ENV PATH="C:\\msys64\\mingw64\\bin;c:\\Program Files\\nodejs;c:\\Program Files (x86)\\Yarn\\bin;c:\\ProgramData\\chocolatey\\bin;C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0;C:\\msys64\\usr\\bin;C:\\Python311;C:\\Program Files\\Git\\bin;C:\\Windows\\SysWOW64${PATH}"
 
-# Copy start_build.ps1 / setvar scripts to the container
-COPY *.ps1 /
+# Copy start_build / setvar scripts to the container
 COPY *.bat /
 
 SHELL ["C:\\Windows\\SysWOW64\\cmd.exe","/S","/C"]
