@@ -737,8 +737,9 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 #if defined(_WIN32) && defined(_MSC_VER)
 
+#ifdef FIXWINDOWS
 #define ARANGODB_ENABLE_SYSLOG 1
-
+#endif
 // necessary defines and includes
 
 #ifdef _WIN64
@@ -812,8 +813,9 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 #define fileno _fileno
 #define fsync _commit
 #ifdef FIXWINDOWS
-#define isatty _cyg_isatty
+//#define isatty _cyg_isatty
 #endif
+
 #define putenv _putenv
 #define tzset _tzset
 

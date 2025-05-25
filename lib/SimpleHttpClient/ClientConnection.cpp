@@ -130,6 +130,8 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
   long status = TRI_send(_socket, buffer, length, 0);
 #else
   long status = TRI_send(_socket, buffer, length, MSG_NOSIGNAL);
+#endif
+
 
   if (status < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);

@@ -34,7 +34,9 @@
 #include <WinSock2.h>
 #endif
 
+#if defined(__APPLE__) || defined(__linux__) 
 #include <fcntl.h>
+#endif
 #include <openssl/opensslv.h>
 #include <openssl/ssl.h>
 #ifndef OPENSSL_VERSION_NUMBER
@@ -658,28 +660,46 @@ bool SslClientConnection::readable() {
 }
 
 bool SslClientConnection::setSocketToNonBlocking() {
-  _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
-  if (_socketFlags == -1) {
-    _errorDetails = "Socket file descriptor read returned with error " +
-                    std::to_string(errno);
-    return false;
-  }
-  if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags | O_NONBLOCK) == -1) {
-    _errorDetails = "Attempt to create non-blocking socket generated error " +
-                    std::to_string(errno);
-    return false;
-  }
+  #if defined(__APPLE__) || defined(__linux__)
+    _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
+    if (_socketFlags == -1) {
+      _errorDetails = "Socket file descriptor read returned with error " +
+                      std::to_string(errno);
+      return false;
+    }
+    if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags | O_NONBLOCK) == -1) {
+      _errorDetails = "Attempt to create non-blocking socket generated error " +
+                      std::to_string(errno);
+      return false;
+    }
+  #else
+    u_long nonBlocking = 1;
+    if (ioctlsocket(_socket.fileDescriptor, FIONBIO, &nonBlocking) != 0) {
+      _errorDetails = "Attempt to create non-blocking socket generated error " +
+                      std::to_string(WSAGetLastError());
+      return false;
+    }
+  #endif
   return true;
 }
 
 bool SslClientConnection::cleanUpSocketFlags() {
   TRI_ASSERT(_isSocketNonBlocking);
+#if defined(__linux__) || defined(__APPLE__)
   if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags & ~O_NONBLOCK) ==
       -1) {
     _errorDetails = "Attempt to make socket blocking generated error " +
                     std::to_string(errno);
     return false;
   }
+#else
+  u_long nonBlocking = 0;
+  if (ioctlsocket(_socket.fileDescriptor, FIONBIO, &nonBlocking) != 0) {
+    _errorDetails = "Attempt to make socket blocking generated error " +
+                    std::to_string(WSAGetLastError());
+    return false;
+  }
+#endif
   return true;
 }
 

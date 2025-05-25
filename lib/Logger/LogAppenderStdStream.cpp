@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogAppenderStdStream.h"
+#include "Basics/operating-system.h"
 
 #include <fcntl.h>
 #include <stdio.h>

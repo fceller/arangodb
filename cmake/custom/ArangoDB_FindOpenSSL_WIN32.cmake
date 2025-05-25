@@ -60,7 +60,8 @@ elseif (1929 LESS ${MSVC_VERSION} AND ${MSVC_VERSION} LESS 1940)
 # 1930-1939: VS 17.0 (v143 toolset)
     set(VS_VERSION "2022")
 else()
-    message(FATAL_ERROR "MSVC version not supported: ${MSVC_VERSION} (supported are 1910-1939)")
+    #message(FATAL_ERROR "MSVC version not supported: ${MSVC_VERSION} (supported are 1910-1939)")
+    set(VS_VERSION "2022")
 endif()
 
 #store original suffixes

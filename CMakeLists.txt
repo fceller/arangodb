@@ -33,8 +33,13 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 option(SKIP_PACKAGING "" OFF)
 
 # enable frontend build
+if (NOT WIN32)
 option(USE_FRONTEND "build the browser-based frontend (requires yarn and nodejs)" ON)
+else()
+option(USE_FRONTEND "build the browser-based frontend (requires yarn and nodejs)" OFF)
+endif(
 
+)
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
@@ -1053,7 +1058,7 @@ elseif (MSVC)
       # get real location by querying for the target.
       execute_process(
           COMMAND powershell
-              "${CCACHE} --shimgen-help | Select-String -SimpleMatch "Target:"| ForEach-Object { ($_ -split \"'\")[1]  }" 
+              "${CCACHE} --shimgen-help | Select-String -SimpleMatch 'Target:' | ForEach-Object { ($_ -split \"'\")[1]  }" 
           OUTPUT_VARIABLE CCACHE_REAL
           RESULT_VARIABLE CCACHE_RESULT_CODE
           OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -1155,7 +1160,6 @@ set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                   
 set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
 
-endif ()
 
 if(NOT MSVC)
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
@@ -1343,7 +1347,7 @@ link_directories("${PROJECT_BINARY_DIR}/bin")
 # ------------------------------------------------------------------------------
 
 find_package(ZLIB REQUIRED) # TODO should be removed, see ZLIB above
-
+if(NOT WIN32)
 if(STATIC_EXECUTABLES)
   # These variables are used when linking BIN_ARANGOD
   # and are specific for how we build our docker build
@@ -1398,6 +1402,7 @@ set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_ORIG}")
+endif() #WIN32 
 
 # ------------------------------------------------------------------------------
 # RocksDB

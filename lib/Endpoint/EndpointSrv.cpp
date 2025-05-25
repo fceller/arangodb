@@ -27,6 +27,21 @@
 #include <algorithm>
 #include <vector>
 
+struct SrvRecord {
+  int priority;
+  int weight;
+  int port;
+  std::string name;
+};
+
+#include "Basics/StringUtils.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
+using namespace arangodb;
+using namespace arangodb::basics;
+
 #ifndef _WIN32
 
 #define BIND_4_COMPAT 1  // LINUX
@@ -36,13 +51,6 @@
 #include <netinet/in.h>
 #include <resolv.h>
 
-#include "Basics/StringUtils.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
-
-using namespace arangodb;
-using namespace arangodb::basics;
 
 #if PACKETSZ > 1024
 #define MAXPACKET PACKETSZ
@@ -55,12 +63,6 @@ union QueryBuffer {
   unsigned char buffer[MAXPACKET];
 };
 
-struct SrvRecord {
-  int priority;
-  int weight;
-  int port;
-  std::string name;
-};
 
 static std::vector<SrvRecord> srvRecords(std::string const& specification) {
   res_init();
