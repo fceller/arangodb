@@ -28,8 +28,11 @@
 #include <thread>
 
 #include "Basics/operating-system.h"
+#ifndef _WIN32
 #include "Basics/threads-posix.h"
-
+#else
+#include "Basics/threads-win32.h"
+#endif
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif

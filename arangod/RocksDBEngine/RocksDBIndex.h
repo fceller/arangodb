@@ -32,6 +32,7 @@
 
 #include <rocksdb/status.h>
 #include <rocksdb/slice.h>
+#include "rocksdb/iterator.h"
 
 #include <atomic>
 #include <memory>

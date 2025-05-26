@@ -1348,60 +1348,60 @@ link_directories("${PROJECT_BINARY_DIR}/bin")
 
 find_package(ZLIB REQUIRED) # TODO should be removed, see ZLIB above
 if(NOT WIN32)
-if(STATIC_EXECUTABLES)
-  # These variables are used when linking BIN_ARANGOD
-  # and are specific for how we build our docker build
-  # containers
-  # TODO avoid hard coded paths
-  if(ARCH_AMD64)
-    set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
-    set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
+  if(STATIC_EXECUTABLES)
+    # These variables are used when linking BIN_ARANGOD
+    # and are specific for how we build our docker build
+    # containers
+    # TODO avoid hard coded paths
+    if(ARCH_AMD64)
+      set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
+      set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
+    else()
+      set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
+      set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
+    endif()
+    message("LAPACK: ${LAPACK_LIBRARIES} and BLAS: to ${BLAS_LIBRARIES}")
+
+    find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
+
+    if(LIBOMP)
+      message(STATUS "Using hardcoded paths '-fopenmp=libomp -L/opt/omp -llapack -lgfortran'")
+    else()
+      message(FATAL_ERROR "libomp.a not found in /opt/omp")
+    endif()
+
+    # TODO avoid hard coded paths
+    set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp -llapack -lgfortran")
   else()
-    set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
-    set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
+    set(BLA_STATIC Off)
+    set(BLA_VENDOR OpenBLAS)
+    find_package(OpenMP)
+    find_package(LAPACK)
+    find_package(BLAS)
+
+    set(FAISS_EXE_LINKER_FLAGS "${OpenMP_CXX_FLAGS}")
+
+    foreach(lapack_lib ${LAPACK_LIBRARIES})
+      message(STATUS "Using LAPACK library: ${lapack_lib}")
+      set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS} ${lapack_lib}")
+    endforeach()
+
+    set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS}")
   endif()
-  message("LAPACK: ${LAPACK_LIBRARIES} and BLAS: to ${BLAS_LIBRARIES}")
 
-  find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
+  # It could be so easy if add_subdirectory allowed to pass variables
+  # Instead be need to save the original, modify, add, and restore
+  # thew flags.
+  set(CMAKE_EXE_LINKER_FLAGS_ORIG "${CMAKE_EXE_LINKER_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}")
 
-  if(LIBOMP)
-    message(STATUS "Using hardcoded paths '-fopenmp=libomp -L/opt/omp -llapack -lgfortran'")
-  else()
-    message(FATAL_ERROR "libomp.a not found in /opt/omp")
-  endif()
+  set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
+  set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
+  set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 
-  # TODO avoid hard coded paths
-  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp -llapack -lgfortran")
-else()
-  set(BLA_STATIC Off)
-  set(BLA_VENDOR OpenBLAS)
-  find_package(OpenMP)
-  find_package(LAPACK)
-  find_package(BLAS)
+  add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 
-  set(FAISS_EXE_LINKER_FLAGS "${OpenMP_CXX_FLAGS}")
-
-  foreach(lapack_lib ${LAPACK_LIBRARIES})
-    message(STATUS "Using LAPACK library: ${lapack_lib}")
-    set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS} ${lapack_lib}")
-  endforeach()
-
-  set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS}")
-endif()
-
-# It could be so easy if add_subdirectory allowed to pass variables
-# Instead be need to save the original, modify, add, and restore
-# thew flags.
-set(CMAKE_EXE_LINKER_FLAGS_ORIG "${CMAKE_EXE_LINKER_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}")
-
-set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
-set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
-set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
-
-add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
-
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_ORIG}")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_ORIG}")
 endif() #WIN32 
 
 # ------------------------------------------------------------------------------

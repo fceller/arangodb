@@ -24,6 +24,8 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+
+
 #include "Basics/TypeList.h"
 #include "Basics/operating-system.h"
 
@@ -78,6 +80,9 @@ class DumpLimitsFeature;
 class HttpEndpointProvider;
 class EngineSelectorFeature;
 class EnvironmentFeature;
+#ifdef _WIN32
+class WindowsServiceFeature;
+#endif
 class FileDescriptorsFeature;
 class FileSystemFeature;
 class FlushFeature;

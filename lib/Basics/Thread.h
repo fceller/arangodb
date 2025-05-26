@@ -27,8 +27,12 @@
 #include <atomic>
 #include <string>
 #include <string_view>
-
+#ifndef _WIN32
 #include "Basics/threads-posix.h"
+#else
+#include "Basics/threads-win32.h"
+#endif 
+
 #include "Basics/threads.h"
 #include "Basics/DownCast.h"
 

@@ -31,10 +31,11 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include <faiss/MetricType.h>
-
 namespace faiss {
 struct IndexIVF;
 }  // namespace faiss
+
+
 
 namespace arangodb {
 class LogicalCollection;

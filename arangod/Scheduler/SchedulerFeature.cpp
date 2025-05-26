@@ -446,7 +446,7 @@ void SchedulerFeature::signalStuffDeinit() {
 }
 
 #ifdef _WIN32
-bool CtrlHandler(DWORD eventType) {
+BOOL CtrlHandler(DWORD eventType) {
   bool shutdown = false;
   std::string shutdownMessage;
 

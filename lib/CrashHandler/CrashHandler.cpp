@@ -67,8 +67,10 @@
 #include <libunwind.h>
 #endif
 
+#ifdef __linux__
 #include <sys/auxv.h>
 #include <elf.h>
+#endif
 
 namespace {
 
@@ -210,6 +212,7 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
     buffer.append(" in state \"").append(ss).append("\"");
   }
 
+  #ifndef _WIN32
   {
     // append current working directory
     char cwd[4096];
@@ -218,7 +221,6 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
     }
   }
 
-#ifndef _WIN32
   if (info != nullptr && (signal == SIGSEGV || signal == SIGBUS)) {
     // dump address that was accessed when the failure occurred (this is
     // somewhat likely a nullptr)
@@ -228,6 +230,7 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
 
   buffer.append(": ").append(context);
 
+  #ifdef __linux__
   {
     // AT_PHDR points to the program header, which is located after the ELF
     // header. This allows us to calculate the base address of the executable.
@@ -262,6 +265,7 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
     appendRegister(", r14: 0x", REG_R14);
     appendRegister(", r15: 0x", REG_R15);
   }
+#endif
 #endif
 }
 
@@ -303,7 +307,11 @@ void logBacktrace() try {
   // log backtrace, of up to maxFrames depth
   {
     // The address of the program headers of the executable.
+    #ifdef __linux__
     long base = getauxval(AT_PHDR) - sizeof(Elf64_Ehdr);
+    #else
+    long base = 0;
+    #endif
 
     unw_cursor_t cursor;
     // unw_word_t ip, sp;

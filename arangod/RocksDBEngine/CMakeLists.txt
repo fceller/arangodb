@@ -58,7 +58,10 @@ add_library(arango_rocksdb STATIC
   RocksDBUpgrade.cpp
   RocksDBVPackIndex.cpp
   RocksDBValue.cpp
+  # --- FIXWINDOWS
+  #ifndef _WIN32 
   RocksDBVectorIndex.cpp
+  #endif
   RocksDBWalAccess.cpp
   ReplicatedRocksDBTransactionState.cpp
   SimpleRocksDBTransactionState.cpp

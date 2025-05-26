@@ -21,8 +21,11 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-
+#ifndef _WIN32
 #include "Basics/threads-posix.h"
+#else
+#include "Basics/threads-win32.h" 
+#endif
 #include "Inspection/Format.h"
 
 namespace arangodb::basics {
@@ -31,7 +34,7 @@ struct ThreadId {
   static auto current() noexcept -> ThreadId;
   auto name() -> std::string;
   TRI_tid_t posix_id;
-  pid_t kernel_id;
+  TRI_pid_t kernel_id;
   bool operator==(ThreadId const&) const = default;
 };
 template<typename Inspector>

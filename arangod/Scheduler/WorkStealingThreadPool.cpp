@@ -29,6 +29,7 @@
 #include <exception>
 #include <memory>
 #include <mutex>
+#include <numeric>
 #include <random>
 #include <thread>
 #include "Basics/cpu-relax.h"

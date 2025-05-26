@@ -26,6 +26,7 @@
 
 #include <memory>
 #include <vector>
+#include <mutex>
 
 namespace arangodb::containers {
 

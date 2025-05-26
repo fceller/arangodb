@@ -34,7 +34,7 @@ namespace arangodb {
 
 LogAppenderStdStream::LogAppenderStdStream(std::string const& filename, int fd)
     : LogAppenderStream(filename, fd) {
-  _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
+  _useColors = ((_isatty(_fd) == 1) && Logger::getUseColor());
 }
 
 LogAppenderStdStream::~LogAppenderStdStream() {

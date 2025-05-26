@@ -73,6 +73,7 @@ struct fmt::formatter<VPackSlice> {
 };
 
 namespace arangodb::inspection {
+  
 // Formats an object of type T that has an overloaded inspector.
 struct inspection_formatter : fmt::formatter<VPackSlice> {
   template<typename T, typename FormatContext,

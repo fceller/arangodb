@@ -40,7 +40,11 @@
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "RocksDBEngine/RocksDBTtlIndex.h"
 #include "RocksDBIndexFactory.h"
+// --- FIXWINDOWS
+#ifndef _WIN32
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#endif
+
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -343,6 +347,8 @@ struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
   }
 };
 
+// --- FIXWINDOWS
+#ifndef _WIN32
 struct VectorIndexFactory : public DefaultIndexFactory {
   explicit VectorIndexFactory(ArangodServer& server, Index::IndexType type)
       : DefaultIndexFactory(server, type) {}
@@ -382,6 +388,7 @@ struct VectorIndexFactory : public DefaultIndexFactory {
                                                 isCreation);
   }
 };
+#endif  // _WIN32
 
 struct TtlIndexFactory : public DefaultIndexFactory {
   TtlIndexFactory(ArangodServer& server, Index::IndexType type)
@@ -472,8 +479,11 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
                                                Index::TRI_IDX_TYPE_ZKD_INDEX);
   static const MdiIndexFactory mdiIndexFactory(server,
                                                Index::TRI_IDX_TYPE_MDI_INDEX);
+  // --- FIXWINDOWS
+#ifndef _WIN32  
   static const VectorIndexFactory vectorIndexFactory(
       server, Index::TRI_IDX_TYPE_VECTOR_INDEX);
+#endif
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
@@ -492,7 +502,10 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   emplace("zkd", zkdIndexFactory);
   emplace("mdi", mdiIndexFactory);
   emplace("mdi-prefixed", mdiPrefixedIndexFactory);
+  // --- FIXWINDOWS
+#ifndef _WIN32
   emplace("vector", vectorIndexFactory);
+#endif
   emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
           iresearchInvertedIndexFactory);
 }

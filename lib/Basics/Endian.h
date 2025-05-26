@@ -55,6 +55,12 @@ static constexpr bool isLittleEndian() { return true; }
 #elif __linux__
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static constexpr bool isLittleEndian() { return true; }
+#elif __BYTE_ORDER == __BIG_ENDIAN
+static constexpr bool isLittleEndian() { return false; }
+#endif
+#else
+#pragma messsage("unsupported os or compiler")
+#endif
 
 #ifdef _WIN32
 #define htobe16(x) htons(x)
@@ -71,7 +77,7 @@ static constexpr bool isLittleEndian() { return true; }
 #define htole64(x) (x)
 #define be64toh(x) ntohll(x)
 #define le64toh(x) (x)
-#endif
+
 #elif __BYTE_ORDER == __BIG_ENDIAN
 static constexpr bool isLittleEndian() { return false; }
 
