@@ -59,7 +59,7 @@ add_library(arango_rocksdb STATIC
   RocksDBVPackIndex.cpp
   RocksDBValue.cpp
   # --- FIXWINDOWS
-  #ifndef _WIN32 
+  #if (NOT WIN32)
   RocksDBVectorIndex.cpp
   #endif
   RocksDBWalAccess.cpp
