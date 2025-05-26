@@ -35,8 +35,10 @@ RUN choco install yarn
 # RUN choco install mingw
 
 # Install Visual Studio Build Tools with the Windows SDK
+# from https://learn.microsoft.com/en-us/visualstudio/releases/2022/release-history
+# Current buildtools version 17.13.7
 RUN powershell -Command \
-    Invoke-WebRequest -Uri https://aka.ms/vs/17/release/vs_buildtools.exe -OutFile vs_buildtools.exe; \
+    Invoke-WebRequest -Uri https://download.visualstudio.microsoft.com/download/pr/e702ed73-8c29-4678-b0d8-72f971267431/1cf3e161fae4819694b7cd8b8cc5b548561b0ff9456d1074ea1d4f86b93f2698/vs_BuildTools.exe -OutFile vs_buildtools.exe; \
     Start-Process -Wait -FilePath .\vs_buildtools.exe -ArgumentList '--quiet --wait --norestart --nocache --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.26100 --add Microsoft.VisualStudio.Component.VC.Redist.14.Latest --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset --add Microsoft.VisualStudio.Component.VC.Llvm.Clang --add Microsoft.VisualStudio.ComponentGroup.NativeDesktop.Llvm.Clang --add Microsoft.VisualStudio.Component.VC.CMake.Project'; \
     Remove-Item -Force vs_buildtools.exe
 
@@ -68,7 +70,7 @@ RUN git config --global --add safe.directory C:/build/*
 ENV PATH="C:\\msys64\\mingw64\\bin;c:\\Program Files\\nodejs;c:\\Program Files (x86)\\Yarn\\bin;c:\\ProgramData\\chocolatey\\bin;C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0;C:\\msys64\\usr\\bin;C:\\Python311;C:\\Program Files\\Git\\bin;C:\\Windows\\SysWOW64${PATH}"
 
 # Copy start_build.ps1 / setvar scripts to the container
-COPY *.ps1 /
+# COPY *.ps1 /
 COPY *.bat /
 
 SHELL ["C:\\Windows\\SysWOW64\\cmd.exe","/S","/C"]
