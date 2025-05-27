@@ -28,7 +28,11 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+// --- FIXWINDOWS
+#ifndef _WIN32
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#endif
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 

@@ -27,7 +27,10 @@
 #include "Aql/ExecutionState.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
+# --- FIXWINDOWS
+#ifndef
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#endif
 #include "Aql/ExecutionBlockImpl.tpp"
 
 #include <cmath>
@@ -92,6 +95,7 @@ void EnumerateNearVectorsExecutor::fillInput(
 
   searchResults();
 }
+
 
 void EnumerateNearVectorsExecutor::searchResults() {
   auto* vectorIndex = dynamic_cast<RocksDBVectorIndex*>(_infos.index.get());

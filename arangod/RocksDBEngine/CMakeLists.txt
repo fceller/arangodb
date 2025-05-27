@@ -1,4 +1,5 @@
-add_library(arango_rocksdb STATIC
+
+set(SOURCES
   RocksDBBackgroundThread.cpp
   ReplicatedRocksDBTransactionCollection.cpp
   RocksDBBuilderIndex.cpp
@@ -58,14 +59,17 @@ add_library(arango_rocksdb STATIC
   RocksDBUpgrade.cpp
   RocksDBVPackIndex.cpp
   RocksDBValue.cpp
-  # --- FIXWINDOWS
-  #if (NOT WIN32)
-  RocksDBVectorIndex.cpp
-  #endif
   RocksDBWalAccess.cpp
   ReplicatedRocksDBTransactionState.cpp
   SimpleRocksDBTransactionState.cpp
   SortedRowsStorageBackendRocksDB.cpp)
+if (NOT WIN32)
+  list(APPEND SOURCES
+    RocksDBVectorIndex.cpp
+    )
+endif()
+
+add_library(arango_rocksdb STATIC ${SOURCES})
 
 if (USE_V8) 
   target_sources(arango_rocksdb PRIVATE

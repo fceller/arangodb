@@ -40,7 +40,10 @@
 #include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateListNode.h"
+// --- FIXWINDOWS
+#ifndef _WIN32
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
+#endif
 #include "Aql/ExecutionNode/MaterializeNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
@@ -638,7 +641,10 @@ static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
 static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     scatterInClusterNodeTypes{
         arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+// --- FIXWINDOWS
+#ifndef _WIN32
         arangodb::aql::ExecutionNode::ENUMERATE_NEAR_VECTORS,
+#endif
         arangodb::aql::ExecutionNode::INDEX,
         arangodb::aql::ExecutionNode::MATERIALIZE,
         arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
@@ -3884,6 +3890,8 @@ auto insertGatherNode(
       }
       return gatherNode;
     }
+// --- FIXWINDOWS
+#ifndef _WIN32
     case ExecutionNode::MATERIALIZE: {
       auto const* materializeNode =
           ExecutionNode::castTo<materialize::MaterializeNode const*>(node);
@@ -3921,6 +3929,7 @@ auto insertGatherNode(
                                                GatherNode::SortMode::Default);
       break;
     }
+    #endif // _WIN32
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE:
