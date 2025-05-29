@@ -187,7 +187,7 @@ if(NOT PERL_FOUND)
 
   # MSVC will execute ADD_CUSTOM_COMMAND even though OUTPUT is already present
   if(MSVC)
-    set(PERL_EXECUTABLE echo)
+    set(PERL_EXECUTABLE perl.exe)
   endif()
 endif()
 
