@@ -76,8 +76,9 @@ enum class Flags : uint16_t {
   OnAll = OnCluster | OnSingle,  // option can be used everywhere
 
   // defaults
-  Default = OnAll,  // default options
-
+  Default = OnAll | OsAll,  // default options
+  
+  DefaultNoOs = Default & ~OsAll,  // default, but not specifying any OSes
   DefaultNoComponents =
       Default & ~OnAll,  // default, but not specifying any components
 

@@ -74,6 +74,8 @@
 #include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
 
+using namespace arangodb::basics;
+
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
