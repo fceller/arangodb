@@ -69,21 +69,21 @@ InitDatabaseFeature::InitDatabaseFeature(
 }
 
 void InitDatabaseFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
+    std::shared_ptr<ProgramOptions> loptions) {
+  loptions->addOption(
       "--database.init-database", "Initialize an empty database.",
       new BooleanParameter(&_initDatabase),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
-  options->addOption(
+  loptions->addOption(
       "--database.restore-admin",
       "Reset the admin users and set a new password.",
       new BooleanParameter(&_restoreAdmin),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
-  options->addOption(
+  loptions->addOption(
       "--database.password", "The initial password of the root user.",
       new StringParameter(&_password),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
@@ -152,9 +152,9 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::cerr << std::flush;
   std::cout << message << ": " << std::flush;
 #ifdef _WIN32
-  terminal_utils::setStdinVisibility(false);
+  terminal_utils::TRI_SetStdinVisibility(false);
   auto sg = arangodb::scopeGuard(
-      [&]() noexcept { terminal_utils::setStdinVisibility(true); });
+      [&]() noexcept { terminal_utils::TRI_SetStdinVisibility(true); });
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);

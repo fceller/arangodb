@@ -61,6 +61,8 @@ RestSystemReportHandler::RestSystemReportHandler(ArangodServer& server,
                          std::to_string(Thread::currentProcessId()) + " 2>&1"},
             {"top", "time top -b -n 1 2>&1"}}) {}
 
+// --- FIXWINDOWS
+#ifndef _WIN32
 namespace {
 std::string exec(std::string const& cmd) {
   std::array<char, 128> buffer;
@@ -76,6 +78,8 @@ std::string exec(std::string const& cmd) {
   return result;
 }
 }  // namespace
+#endif // FIXWINDOWS
+
 
 bool RestSystemReportHandler::isAdminUser() const {
   if (!ExecContext::isAuthEnabled()) {

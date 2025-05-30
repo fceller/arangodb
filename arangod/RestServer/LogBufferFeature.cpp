@@ -196,7 +196,7 @@ class LogAppenderEventLog final : public LogAppender {
       return;
     }
 
-    TRI_LogWindowsEventlog(message._function, message._file, message._line,
+    TRI_LogWindowsEventlog(message._function.data(), message._file.data(), message._line,
                            message._message);
   }
 
@@ -242,9 +242,9 @@ LogBufferFeature::LogBufferFeature(Server& server)
   startsAfter<LoggerFeature>();
 
 #ifdef _WIN32
-  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
+  Logger::addGlobalAppender(Logger::defaultLogGroup(),
                                  std::make_shared<LogAppenderDebugOutput>());
-  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
+  Logger::addGlobalAppender(Logger::defaultLogGroup(),
                                  std::make_shared<LogAppenderEventLog>());
 #endif
 

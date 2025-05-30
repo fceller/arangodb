@@ -220,8 +220,9 @@ std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
       std::string icu_path = path.substr(0, path.length() - fn.length());
       FileUtils::makePathAbsolute(icu_path);
       FileUtils::normalizePath(icu_path);
+#ifndef _WIN32
       setenv("ICU_DATA_LEGACY", icu_path.c_str(), 1);
-#ifdef _WIN32
+#else // _WIN32
       icu::UnicodeString uicuEnv(icu_path.c_str(), (uint16_t)icu_path.length());
       SetEnvironmentVariableW(L"ICU_DATA_LEGACY",
                               (wchar_t*)uicuEnv.getTerminatedBuffer());

@@ -149,6 +149,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // in the way...
   if (ServerState::instance()->isCoordinator()) {
     auto disableDaemonAndSupervisor = [&]() {
+#ifdef ARANGODB_HAVE_FORK
       if constexpr (Server::contains<DaemonFeature>()) {
         server().forceDisableFeatures(std::array{Server::id<DaemonFeature>()});
       }
@@ -156,6 +157,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         server().forceDisableFeatures(
             std::array{Server::id<SupervisorFeature>()});
       }
+#endif
     };
 
     server().forceDisableFeatures(std::array{Server::id<GreetingsFeature>()});

@@ -38,13 +38,12 @@
 #include <iomanip>
 #include <locale>
 
-#include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
 #include "win-utils.h"
 
 #include <VersionHelpers.h>
-#include <atlstr.h>
+//#include <atlstr.h>
 #include <crtdbg.h>
 #include <malloc.h>
 #include <string.h>
@@ -343,7 +342,7 @@ char* TRI_GETCWD(char* buffer, int maxlen) {
     auto* rcw = ::_wgetcwd(wbuf.get(), maxlen);
     if (rcw != nullptr) {
       std::string rcs = fromWString(rcw);
-      if (rcs.length() + 1 < maxlen) {
+      if (rcs.length() + 1 < (std::size_t) maxlen) {
         memcpy(buffer, rcs.c_str(), rcs.length() + 1);
 
         // tolower on hard-drive letter
@@ -799,6 +798,30 @@ bool terminalKnowsANSIColors() {
   return IsWindows8OrGreater();
 }
 
+
+// --- FIXWINDOWS
+// commented out atlstr.h include due to atl dependencies not being present in the environment
+// The following is the alternative to not finding CString in ATL
+#ifndef FIXWINDOWS
+std::string getFileNameFromHandle(HANDLE fileHandle) {
+  char buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR) * MAX_PATH];
+  FILE_NAME_INFO* FileInformation = (FILE_NAME_INFO*)buff;
+
+  if (!GetFileInformationByHandleEx(fileHandle, FileNameInfo, FileInformation,
+                                    sizeof(buff))) {
+    return std::string();
+  }
+
+  // Convert wide string to std::wstring
+  std::wstring wideName(FileInformation->FileName,
+                        FileInformation->FileNameLength / sizeof(WCHAR));
+
+  // Convert to std::string (UTF-8)
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  return converter.to_bytes(wideName);
+}
+#else
+
 std::string getFileNameFromHandle(HANDLE fileHandle) {
   char buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR) * MAX_PATH];
   FILE_NAME_INFO* FileInformation = (FILE_NAME_INFO*)buff;
@@ -809,6 +832,7 @@ std::string getFileNameFromHandle(HANDLE fileHandle) {
   }
   return std::string((LPCTSTR)CString(FileInformation->FileName));
 }
+#endif
 
 static std::vector<std::string> argVec;
 

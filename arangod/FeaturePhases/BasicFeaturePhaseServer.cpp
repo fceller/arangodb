@@ -31,12 +31,14 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
   setOptional(false);
   startsAfter<GreetingsFeaturePhase, ArangodServer>();
 
+  #ifdef ARANGODB_HAVE_FORK
   if constexpr (ArangodServer::contains<DaemonFeature>()) {
     startsAfter<DaemonFeature, ArangodServer>();
   }
   if constexpr (ArangodServer::contains<SupervisorFeature>()) {
     startsAfter<SupervisorFeature, ArangodServer>();
   }
+  #endif
   startsAfter<CpuUsageFeature, ArangodServer>();
   startsAfter<DatabasePathFeature, ArangodServer>();
   startsAfter<EnvironmentFeature, ArangodServer>();

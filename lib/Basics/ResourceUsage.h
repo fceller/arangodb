@@ -28,6 +28,12 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+// --- FIXWINDOWS
+#ifdef _WIN32
+#include <iostream>
+#include <type_traits>
+#endif
+
 
 namespace arangodb {
 class GlobalResourceMonitor;
@@ -145,7 +151,16 @@ class ResourceUsageAllocatorBase : public Allocator {
   using size_type = typename std::allocator_traits<Allocator>::size_type;
   using value_type = typename std::allocator_traits<Allocator>::value_type;
 
-  ResourceUsageAllocatorBase() = delete;
+  // --- FIXWINDOWS
+  #ifndef _WIN32
+    ResourceUsageAllocatorBase() = delete;
+  #else
+    ResourceUsageAllocatorBase() {
+      std::cout << "[DEBUG] Default constructor called for ResourceUsageAllocatorBase" << std::endl;
+      std::cout << "MyAllocator default ctor at " << __FILE__ << ":" << __LINE__ << std::endl;
+      std::cout << "         Monitor: " << (_resourceMonitor ? typeid( _resourceMonitor).name() : "nullptr") << std::endl;
+    };
+  #endif
 
   template<typename... Args>
   ResourceUsageAllocatorBase(ResourceMonitor& resourceMonitor, Args&&... args)

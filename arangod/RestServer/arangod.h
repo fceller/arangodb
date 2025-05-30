@@ -135,8 +135,10 @@ class V8SecurityFeature;
 class VersionFeature;
 class ViewTypesFeature;
 class ClusterEngine;
+#ifdef ARANGODB_HAVE_FORK
 class DaemonFeature;
 class SupervisorFeature;
+#endif
 class AuditFeature;
 class LicenseFeature;
 class RCloneFeature;

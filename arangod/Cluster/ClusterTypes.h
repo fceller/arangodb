@@ -164,5 +164,5 @@ struct QueryAnalyzerRevisions {
 };
 
 std::ostream& operator<<(std::ostream& o,
-                         arangodb::QueryAnalyzerRevisions const& r);
+                         QueryAnalyzerRevisions const& r);
 }  // namespace arangodb

@@ -1,4 +1,4 @@
-add_library(arangoserver STATIC
+set(SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
@@ -54,7 +54,6 @@ add_library(arangoserver STATIC
   FeaturePhases/ServerFeaturePhase.cpp
   GeneralServer/Acceptor.cpp
   GeneralServer/AcceptorTcp.cpp
-  GeneralServer/AcceptorUnixDomain.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
   GeneralServer/CommTask.cpp
@@ -121,7 +120,6 @@ add_library(arangoserver STATIC
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
   RestServer/CpuUsageFeature.cpp
-  RestServer/DaemonFeature.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/DumpLimitsFeature.cpp
@@ -144,7 +142,6 @@ add_library(arangoserver STATIC
   RestServer/ServerIdFeature.cpp
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
-  RestServer/SupervisorFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TemporaryStorageFeature.cpp
   RestServer/TimeZoneFeature.cpp
@@ -181,7 +178,20 @@ add_library(arangoserver STATIC
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp)
-if (USE_V8) 
+
+  # --- FIXWINDOWS
+if (NOT WIN32)
+    list(APPEND SOURCES 
+    GeneralServer/AcceptorUnixDomain.cpp
+    RestServer/DaemonFeature.cpp
+    RestServer/SupervisorFeature.cpp
+      )
+endif()
+add_library(arangoserver STATIC ${SOURCES})
+
+
+
+  if (USE_V8) 
   target_sources(arangoserver PRIVATE
     FeaturePhases/FoxxFeaturePhase.cpp
     FeaturePhases/V8FeaturePhase.cpp

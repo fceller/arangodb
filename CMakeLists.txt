@@ -975,6 +975,7 @@ function(add_compile_warnings_flags)
       if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
         # There's a warning about /MP being unused if compiling only a single file
         add_compile_options(-Wno-unused-command-line-argument)
+        add_compile_options(-Wno-unused-function)
       endif()
     else ()
       add_compile_options(-Werror -Wno-error=deprecated-declarations)

@@ -112,8 +112,11 @@ auto getStacktraceData(IndexedForestWithRoots<PromiseSnapshot> const& promises)
       auto [id, hierarchy] = next.value();
       auto data = promises.node(id);
       if (data != std::nullopt) {
+        // --- FIXWINDOWS: This is a compile workaround for the fact that there is ambiguity
+        #ifndef _WIN32
         auto entry = Entry{.hierarchy = hierarchy, .data = data.value()};
         velocypack::serialize(builder, entry);
+        #endif
       }
     } while (true);
     builder.close();
