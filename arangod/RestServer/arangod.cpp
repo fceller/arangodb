@@ -291,11 +291,12 @@ static void f() {
 #endif
 
 int main(int argc, char* argv[]) {
+#ifdef __linux__
   // Do not delete this! See above for an explanation.
   if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) {
     f();
   }
-
+#endif
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
 
   TRI_GET_ARGV(argc, argv);
@@ -338,6 +339,7 @@ int main(int argc, char* argv[]) {
               << ", giving up." << std::endl;
     return res;
   }
+#ifndef _WIN32
   // It is not clear if we want to do the following under Linux and OSX,
   // it is a clean way to restart from scratch with the same process ID,
   // so the process does not have to be terminated. On Windows, we have
@@ -352,4 +354,6 @@ int main(int argc, char* argv[]) {
     std::cerr << "WARNING: could not execvp ourselves, restore will not work!"
               << std::endl;
   }
+#endif
+
 }

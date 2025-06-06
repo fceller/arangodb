@@ -38,7 +38,8 @@
 #include <unordered_set>
 #include <vector>
 
-namespace arangodb::options {
+namespace arangodb {
+namespace options {
 
 // helper function to strip-non-numeric data from a string
 std::string removeWhitespaceAndComments(std::string const& value);
@@ -501,4 +502,5 @@ struct ObsoleteParameter : public Parameter {
 
   bool required;
 };
-}  // namespace arangodb::options
+}  // namespace options
+}  // namespace arangodb

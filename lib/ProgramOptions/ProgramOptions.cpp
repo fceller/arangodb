@@ -184,7 +184,7 @@ void ProgramOptions::printUsage() const {
 // hidden
 void ProgramOptions::printHelp(std::string const& search) const {
   bool const colors = (isatty(STDOUT_FILENO) != 0);
-  auto ts = terminal_utils::defaultTerminalSize();
+  auto ts = terminal_utils::TRI_DefaultTerminalSize();
   size_t tw = ts.columns;
   size_t ow = optionsWidth();
 

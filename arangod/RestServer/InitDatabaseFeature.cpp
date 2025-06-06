@@ -58,6 +58,7 @@
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+using namespace arangodb::terminal_utils;
 
 namespace arangodb {
 
@@ -73,20 +74,20 @@ void InitDatabaseFeature::collectOptions(
   loptions->addOption(
       "--database.init-database", "Initialize an empty database.",
       new BooleanParameter(&_initDatabase),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
+      options::makeDefaultFlags(options::Flags::Uncommon,
+                                          options::Flags::Command));
 
   loptions->addOption(
       "--database.restore-admin",
       "Reset the admin users and set a new password.",
       new BooleanParameter(&_restoreAdmin),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
+      options::makeDefaultFlags(options::Flags::Uncommon,
+                                          options::Flags::Command));
 
   loptions->addOption(
       "--database.password", "The initial password of the root user.",
       new StringParameter(&_password),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+      options::makeDefaultFlags(options::Flags::Uncommon));
 }
 
 void InitDatabaseFeature::validateOptions(
@@ -132,10 +133,10 @@ void InitDatabaseFeature::prepare() {
           _password = password1;
           break;
         }
-        LOG_TOPIC("2a01c", ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("2a01c", ERR, Logger::FIXME)
             << "passwords do not match, please repeat";
       } else {
-        LOG_TOPIC("ba459", FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("ba459", FATAL, Logger::FIXME)
             << "initialization aborted by user";
         FATAL_ERROR_EXIT();
       }
@@ -146,14 +147,14 @@ void InitDatabaseFeature::prepare() {
 std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::string password;
 
-  arangodb::Logger::flush();
+  Logger::flush();
   // Wait for the logger thread to flush eventually existing output.
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
   std::cerr << std::flush;
   std::cout << message << ": " << std::flush;
 #ifdef _WIN32
   terminal_utils::TRI_SetStdinVisibility(false);
-  auto sg = arangodb::scopeGuard(
+  auto sg = scopeGuard(
       [&]() noexcept { terminal_utils::TRI_SetStdinVisibility(true); });
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
@@ -213,7 +214,7 @@ void InitDatabaseFeature::checkEmptyDatabase() {
   return;
 
 doexit:
-  LOG_TOPIC("a38e6", FATAL, arangodb::Logger::FIXME) << message;
+  LOG_TOPIC("a38e6", FATAL, Logger::FIXME) << message;
 
   auto& logger = server().getFeature<LoggerFeature>();
   logger.unprepare();

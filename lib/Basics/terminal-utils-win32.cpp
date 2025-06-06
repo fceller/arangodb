@@ -28,6 +28,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/terminal-utils.h"
+
+#include <windows.h>
+
+using namespace arangodb::terminal_utils;
 
 TRI_TerminalSize TRI_DefaultTerminalSize() {
   CONSOLE_SCREEN_BUFFER_INFO SBInfo;

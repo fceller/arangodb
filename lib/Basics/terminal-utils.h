@@ -28,10 +28,9 @@
 #include <termios.h>
 #endif
 
+
 namespace arangodb {
-
-namespace arangodb::terminal_utils {
-
+namespace terminal_utils {
 struct TRI_TerminalSize {
   int rows;
   int columns;
@@ -56,5 +55,5 @@ TRI_TerminalSize TRI_DefaultTerminalSize();
 void TRI_SetStdinVisibility(bool);
 
 }
-}
-
+} 
+ 

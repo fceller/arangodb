@@ -23,7 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
+#ifndef _WIN32
 #include <spawn.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -80,6 +82,7 @@
 
 #include "Basics/NumberUtils.h"
 #include "Basics/PageSize.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -1155,8 +1158,14 @@ void TRI_CreateExternalProcess(char const* executable,
   external->_arguments[n + 1] = nullptr;
   external->_status = TRI_EXT_NOT_STARTED;
 
+#ifdef _WIN32
+  // on Windows, we need to convert the arguments to a wide string  
+   StartExternalProcess(external.get(), usePipes, additionalEnv,
+                                 fileForStdErr);
+#else
   StartExternalProcessPosixSpawn(external.get(), usePipes, additionalEnv,
                                  fileForStdErr);
+#endif
 
   if (external->_status != TRI_EXT_RUNNING &&
       external->_status != TRI_EXT_TERMINATED) {
@@ -1681,10 +1690,13 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal,
 typedef LONG(NTAPI* NtSuspendProcess)(IN HANDLE ProcessHandle);
 typedef LONG(NTAPI* NtResumeProcess)(IN HANDLE ProcessHandle);
 
-NtSuspendProcess pfnNtSuspendProcess = (NtSuspendProcess)GetProcAddress(
-    GetModuleHandle("ntdll"), "NtSuspendProcess");
-NtResumeProcess pfnNtResumeProcess = (NtResumeProcess)GetProcAddress(
-    GetModuleHandle("ntdll"), "NtResumeProcess");
+NtSuspendProcess pfnNtSuspendProcess = reinterpret_cast<NtSuspendProcess>(
+    reinterpret_cast<void*>(GetProcAddress(GetModuleHandle("ntdll"), "NtSuspendProcess"))
+);
+
+NtResumeProcess pfnNtResumeProcess = reinterpret_cast<NtResumeProcess>(
+    reinterpret_cast<void*>(GetProcAddress(GetModuleHandle("ntdll"), "NtResumeProcess"))
+);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

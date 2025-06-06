@@ -95,7 +95,14 @@ static thread_local ::ThreadNumber LOCAL_THREAD_NUMBER{};
 static thread_local char const* LOCAL_THREAD_NAME = nullptr;
 
 ThreadNameFetcher::ThreadNameFetcher(TRI_tid_t id) noexcept {
+  #ifndef _WIN32
   pthread_getname_np(id, _buffer, 32);
+  #else
+  // on Windows, we cannot retrieve the thread name by id, so we just use the
+  // --FIXWINDOWS-- local thread name
+  // use irs::get_thread_name from thread_utils.cpp
+  memset(&_buffer[0], 0, sizeof(_buffer));
+  #endif
 }
 
 // retrieve the current thread's name. the string view will
@@ -174,11 +181,20 @@ TRI_pid_t Thread::currentProcessId() {
 }
 
 /// @brief returns the kernel thread id
+// --- FIXWINDOWS 
+// Note: On Windows, this is the same as the thread id. TODO: AR: Varma
+#ifndef _WIN32
 #ifdef HAVE_SYS_GETTID
 TRI_pid_t Thread::currentKernelThreadId() { return gettid(); }
 #else
 #include <sys/syscall.h>
 TRI_pid_t Thread::currentKernelThreadId() { return syscall(SYS_gettid); }
+#endif
+#else
+TRI_pid_t Thread::currentKernelThreadId() {
+  // On Windows, we return the thread id, which is the same as the kernel thread id
+  return currentThreadId();
+}
 #endif
 
 /// @brief returns the thread process id

@@ -1676,7 +1676,8 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
   }
   return std::string(p, binaryPathLength - installPathLength);
 }
-
+// --- FIXWINDOWS
+#ifndef _WIN32
 [[maybe_unused]] static bool CopyFileContents(int srcFD, int dstFD,
                                               TRI_read_t fileSize,
                                               std::string& error) {
@@ -1736,7 +1737,7 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
 
     return rc;
   }
-
+  
   // systems other than Linux use regular file-copying.
   // note: regular file copying will also be used on Linux
   // if we cannot use the splice() system call
@@ -1796,6 +1797,48 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
   TRI_Free(buf);
   return rc;
 }
+#else
+
+[[maybe_unused]] static bool CopyFileContents(int srcFD, int dstFD,
+                                              TRI_read_t fileSize,
+                                              std::string& error) {
+  TRI_ASSERT(fileSize > 0);
+
+  const DWORD bufferSize = 64 * 1024; // 64 KB
+    char buffer[bufferSize];
+    DWORD bytesRead = 0, bytesWritten = 0;
+  HANDLE hSource = reinterpret_cast<HANDLE>(_get_osfhandle(srcFD));
+  HANDLE hDest = reinterpret_cast<HANDLE>(_get_osfhandle(dstFD));
+  if (hSource == INVALID_HANDLE_VALUE || hDest == INVALID_HANDLE_VALUE) {
+    error = "invalid file descriptor";
+    return false;
+  }
+
+    // Set source file pointer to beginning
+    if (SetFilePointer(hSource, 0, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+        error = "failed to set source file pointer";
+        return false;
+      return false;
+    }
+
+    // Set destination file pointer to beginning (optional: truncate)
+    if (SetFilePointer(hDest, 0, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+      error = "failed to set destination file pointer";
+      return false;
+    }
+
+    while (ReadFile(hSource, buffer, bufferSize, &bytesRead, NULL) && bytesRead > 0) {
+        if (!WriteFile(hDest, buffer, bytesRead, &bytesWritten, NULL) || bytesWritten != bytesRead) {
+            error = "failed to write to destination file";
+          return false;
+        }
+    }
+
+    return true;
+}
+#endif
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the contents of a file
