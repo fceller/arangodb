@@ -32,7 +32,7 @@
 
 namespace arangodb {
 
-namespace arangodb::terminal_utils {
+namespace terminal_utils {
 
 /// @brief returns the terminal size
 #if !defined(TRI_HAVE_SYS_IOCTL_H) && !defined(TRI_WIN32_CONSOLE)

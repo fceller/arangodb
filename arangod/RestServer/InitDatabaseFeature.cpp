@@ -164,9 +164,9 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   pw.toUTF8String<std::string>(password);
 #else
 #ifdef TRI_HAVE_TERMIOS_H
-  terminal_utils::setStdinVisibility(false);
+  terminal_utils::TRI_SetStdinVisibility(false);
   std::getline(std::cin, password);
-  terminal_utils::setStdinVisibility(true);
+  terminal_utils::TRI_SetStdinVisibility(true);
 #else
   std::getline(std::cin, password);
 #endif

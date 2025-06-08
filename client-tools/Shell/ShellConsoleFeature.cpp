@@ -61,6 +61,7 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
+using namespace arangodb::terminal_utils;
 
 #ifdef _WIN32
 static const int FOREGROUND_WHITE =
@@ -187,7 +188,7 @@ void ShellConsoleFeature::_print2(std::string const& s) {
     DWORD n;
     WriteConsoleW(handle, wBuf, (DWORD)wLen, &n, NULL);
   } else {
-    fprintf(stdout, "window error: '%d' \r\n", GetLastError());
+    fprintf(stdout, "window error: '%lu' \r\n", GetLastError());
     fprintf(stdout, "%s\r\n", s.c_str());
   }
 
@@ -324,10 +325,10 @@ std::string ShellConsoleFeature::readPassword(std::string const& message) {
 }
 
 std::string ShellConsoleFeature::readPassword() {
-  terminal_utils::setStdinVisibility(false);
+  terminal_utils::TRI_SetStdinVisibility(false);
 
   auto sg = arangodb::scopeGuard(
-      [&]() noexcept { terminal_utils::setStdinVisibility(true); });
+      [&]() noexcept { terminal_utils::TRI_SetStdinVisibility(true); });
 
   std::string password;
 

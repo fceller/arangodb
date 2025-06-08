@@ -137,7 +137,10 @@ class EnumerateNearVectorsExecutor {
   ExecutorState _state{ExecutorState::HASMORE};
 
   std::vector<float> _distances;
+  // --- FIXWINDOWS
+  #ifndef _WIN32
   std::vector<VectorIndexLabelId> _labels;
+  #endif
   std::size_t _currentProcessedResultCount{0};
   // needed to enable fullCount to work
   std::size_t _processedInputs{0};

@@ -616,8 +616,7 @@ if(CMAKE_COMPILER_IS_CLANG)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "16.0")
     message(WARNING "ArangoDB requires clang 16.0 or newer, building with older compiler versions is unsupported")
   endif()
-  list(APPEND BASE_LIBS atomic)
-endif()
+ endif()
 
 if (MSVC)  #TODO: MDVarma  CR: check if needed
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -878,7 +877,13 @@ endfunction()
 # RESOLV and RT
 # ------------------------------------------------------------------------------
 
-set(SYS_LIBS ${SYS_LIBS} resolv rt)
+if (NOT WINDOWS)
+  set(SYS_LIBS ${SYS_LIBS} resolv)
+
+  if (NOT DARWIN)
+    set(SYS_LIBS ${SYS_LIBS} rt)
+  endif ()
+endif ()
 
 # ------------------------------------------------------------------------------
 # JEMALLOC
@@ -1348,6 +1353,8 @@ link_directories("${PROJECT_BINARY_DIR}/bin")
 # ------------------------------------------------------------------------------
 
 find_package(ZLIB REQUIRED) # TODO should be removed, see ZLIB above
+# --- FIXWINDOWS
+# faiss is currently not supported on Windows, so we disable it
 if(NOT WIN32)
   if(STATIC_EXECUTABLES)
     # These variables are used when linking BIN_ARANGOD
@@ -1531,7 +1538,6 @@ add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
 list(INSERT SYSTEM_LIBRARIES 0
   ${BT_LIBS}
   ${ZLIB_LIBS}
-  ${ICU_LIBS}
   ${ICU64_LIBS}
   ${OPENSSL_LIBRARIES}
   ${BASE_LIBS}
@@ -1539,6 +1545,11 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${CMAKE_DL_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
 )
+if (USE_V8)
+  list(APPEND SYSTEM_LIBRARIES   ${ICU_LIBS})
+endif ()
+
+
 
 add_subdirectory(lib)
 add_subdirectory(client-tools)
@@ -1548,6 +1559,54 @@ if(USE_GOOGLE_TESTS)
   add_subdirectory(tests)
 endif()
 
+add_dependencies(${BIN_ARANGOBENCH}   zlibstatic)
+if (USE_ENTERPRISE)
+  add_dependencies(${BIN_ARANGOBACKUP}  zlibstatic)
+endif ()
+add_dependencies(${BIN_ARANGOD}       zlibstatic)
+add_dependencies(${BIN_ARANGODUMP}    zlibstatic)
+add_dependencies(${BIN_ARANGOEXPORT}  zlibstatic)
+add_dependencies(${BIN_ARANGOIMPORT}  zlibstatic)
+add_dependencies(${BIN_ARANGORESTORE} zlibstatic)
+if (USE_V8)
+add_dependencies(${BIN_ARANGOSH}      zlibstatic)
+endif ()
+
+if (UNIX)
+  add_dependencies(arangobench   man)
+  if (USE_ENTERPRISE)
+    add_dependencies(arangobackup  man)
+  endif ()
+  add_dependencies(arangod       man)
+  add_dependencies(arangodump    man)
+  add_dependencies(arangoexport  man)
+  add_dependencies(arangoimport  man)
+  add_dependencies(arangorestore man)
+  add_dependencies(arangosh      man)
+endif ()
+
+if (NOT USE_PRECOMPILED_V8)
+
+
+  # all binaries depend on v8_build because it contains ICU as well
+add_dependencies(${BIN_ARANGOBENCH}   v8_build)
+if (USE_ENTERPRISE)
+  add_dependencies(${BIN_ARANGOBACKUP}  v8_build)
+endif ()
+add_dependencies(${BIN_ARANGOD}       v8_build)
+add_dependencies(${BIN_ARANGODUMP}    v8_build)
+add_dependencies(${BIN_ARANGOEXPORT}  v8_build)
+add_dependencies(${BIN_ARANGOIMPORT}  v8_build)
+add_dependencies(${BIN_ARANGORESTORE} v8_build)
+if (USE_V8)
+add_dependencies(${BIN_ARANGOSH}      v8_build)
+endif ()
+if (USE_GOOGLE_TESTS)
+  add_dependencies(${BIN_ARANGODB_TESTS} v8_build)
+endif ()
+endif ()
+
+ 
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}
 )

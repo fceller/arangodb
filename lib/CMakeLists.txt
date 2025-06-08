@@ -334,13 +334,17 @@ add_library(arango_lightweight STATIC
         Random/RandomGenerator.cpp
 )
 
+
+
 if (MSVC)
   target_sources(arango_lightweight PRIVATE
           Basics/terminal-utils-win32.cpp
           Basics/threads-win32.cpp
           Basics/win-utils.cpp
           )
+if (NOT WIN32)
   target_link_libraries(arango_lightweight PRIVATE syslog-win32)
+endif()
 else ()
   target_sources(arango_lightweight PRIVATE
           Basics/terminal-utils-posix.cpp

@@ -47,6 +47,6 @@ target_sources(arango_aql PRIVATE
 )
 
 # --- FIXWINDOWS
-if (NOT WIN32)
+if (1)
  target_sources(arango_aql PRIVATE EnumerateNearVectorNode.cpp)
 endif()

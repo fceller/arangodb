@@ -186,6 +186,8 @@ if (NOT WIN32)
     RestServer/DaemonFeature.cpp
     RestServer/SupervisorFeature.cpp
       )
+else()
+    list(APPEND SOURCES RestServer/WindowsServiceFeature.cpp)
 endif()
 add_library(arangoserver STATIC ${SOURCES})
 

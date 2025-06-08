@@ -114,8 +114,16 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
+                                           // --- FIXWINDOWS
+#ifndef _WIN32
   return std::make_unique<ExecutionBlockImpl<EnumerateNearVectorsExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
+#else
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "EnumerateNearVectorNode is not implemented for Windows");
+      return nullptr;  // Unreachable, but silences compiler warning
+#endif    
 }
 
 ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,

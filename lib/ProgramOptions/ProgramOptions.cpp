@@ -43,6 +43,7 @@
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
 using namespace arangodb::options;
+using namespace arangodb::terminal_utils;
 
 /*static*/ std::function<bool(std::string const&)> const
     ProgramOptions::defaultOptionsFilter = [](std::string const& name) {

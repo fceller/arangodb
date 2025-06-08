@@ -34,6 +34,9 @@
 
 using namespace arangodb::terminal_utils;
 
+namespace arangodb {
+  namespace terminal_utils {
+
 TRI_TerminalSize TRI_DefaultTerminalSize() {
   CONSOLE_SCREEN_BUFFER_INFO SBInfo;
 
@@ -48,4 +51,7 @@ TRI_TerminalSize TRI_DefaultTerminalSize() {
   }
 
   return TRI_TerminalSize{SBInfo.dwSize.Y, SBInfo.dwSize.X};
+}
+
+}
 }
