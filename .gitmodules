@@ -6,7 +6,7 @@
 	url = https://github.com/arangodb/velocypack.git
 [submodule "3rdParty/fmt"]
 	path = 3rdParty/fmt
-	url = https://github.com/fmtlib/fmt
+	url = https://github.com/arangodb/fmt
 [submodule "3rdParty/rocksdb"]
 	path = 3rdParty/rocksdb
 	url = https://github.com/arangodb/rocksdb.git
