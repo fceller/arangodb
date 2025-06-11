@@ -10,6 +10,7 @@ target_sources(arango_aql PRIVATE
   EnumerateCollectionNode.cpp
   EnumerateListNode.cpp
   EnumeratePathsNode.cpp
+  EnumerateNearVectorNode.cpp
   ExecutionNode.cpp
   FilterNode.cpp
   GatherNode.cpp
@@ -45,8 +46,3 @@ target_sources(arango_aql PRIVATE
   UpsertNode.cpp
   WindowNode.cpp
 )
-
-# --- FIXWINDOWS
-if (1)
- target_sources(arango_aql PRIVATE EnumerateNearVectorNode.cpp)
-endif()

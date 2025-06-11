@@ -248,7 +248,7 @@ set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
 IF(MSVC)
-  set(BIN_ARANGOBENCH   arangobench.exe)
+  set(BIN_ARANGOBENCH   arangobench)
   set(BIN_ARANGOBACKUP  arangobackup.exe)
   set(BIN_ARANGOD       arangod.exe)
   set(BIN_ARANGODUMP    arangodump.exe)
