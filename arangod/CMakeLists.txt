@@ -16,7 +16,24 @@ else()
   add_definitions("-DTEST_VIRTUAL=")
 endif()
 
-add_definitions("-Wno-error=enum-constexpr-conversion -Wno-error=unused-local-typedef")
+if(MSVC)
+  # MSVC: suppress warning C26812 (The enum type is unscoped. Prefer 'enum class' over 'enum')
+  add_compile_options("/wd26812")
+  # MSVC: suppress warning C4091 (unused typedef)
+  add_compile_options("/wd4091")
+  # MSVC: suppress warning C4100 (unreferenced formal parameter)
+  add_compile_options("/wd4100")
+  # C4996: 'function': was declared deprecated
+  add_compile_options("/wd4996")
+  # C4217: 'function': nonstandard extension used : 'function' : conversion from 'type1' to 'type2'
+  add_compile_options("/wd4217")
+  # C4324 : 'function': structure was padded due to alignment specifier
+  add_compile_options("/wd4324")
+  # C4127: conditional expression is constant
+  add_compile_options("/wd4127")
+else()
+  add_compile_options(-Wno-error=enum-constexpr-conversion -Wno-error=unused-local-typedef)
+endif()
 
 # add necessary defines for ICU. this will suffix all included ICU functions
 # and the ICU namespace with _64_64
