@@ -31,9 +31,12 @@ if(MSVC)
   add_compile_options("/wd4324")
   # C4127: conditional expression is constant
   add_compile_options("/wd4127")
-else()
-  add_compile_options(-Wno-error=enum-constexpr-conversion -Wno-error=unused-local-typedef)
+  # C4063: case 'value' is not a valid value for switch of enum 'type'
+  add_compile_options("/wd4063")
 endif()
+
+# we can use clang switches with clang-cl on Windows as well
+add_compile_options(-Wno-error=enum-constexpr-conversion -Wno-error=unused-local-typedef)
 
 # add necessary defines for ICU. this will suffix all included ICU functions
 # and the ICU namespace with _64_64
