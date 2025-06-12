@@ -346,7 +346,11 @@ std::string V8PlatformFeature::determineICUDataPath() {
       std::string icu_path = path.substr(0, path.length() - fn.length());
       FileUtils::makePathAbsolute(icu_path);
       FileUtils::normalizePath(icu_path);
+  #ifdef _WIN32
+      SetEnvironmentVariableA("ICU_DATA", icu_path.c_str());
+  #else
       setenv("ICU_DATA", icu_path.c_str(), 1);
+  #endif
     }
   }
 

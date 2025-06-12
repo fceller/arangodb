@@ -54,10 +54,43 @@ void WalManager::createDirectories(std::filesystem::path path) {
     std::filesystem::create_directories(path);
   } catch (std::exception& e) {
     LOG_TOPIC("0e6d9", ERR, Logger::REPLICATED_WAL)
-        << "Failed to create directory "
-        << path.string() + " with error " + e.what();
+        << "Failed to create directory " << path.string()
+        << " with error " << e.what();
+    return;
   }
-#ifdef FIXWINDOWS
+
+#ifdef _WIN32
+  // Ensure the parent directories' metadata is flushed to disk
+  while (!path.empty() && path.has_relative_path()) {
+    HANDLE dirHandle = ::CreateFileW(
+        path.wstring().c_str(),
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        NULL,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS, // Required to open directories
+        NULL);
+
+    if (dirHandle == INVALID_HANDLE_VALUE) {
+      DWORD error = ::GetLastError();
+      LOG_TOPIC("0e6d9", ERR, Logger::REPLICATED_WAL)
+          << "Failed to open directory handle for "
+          << path.string() << " with error code " << error;
+      break;
+    }
+
+    if (!::FlushFileBuffers(dirHandle)) {
+      DWORD error = ::GetLastError();
+      LOG_TOPIC("0e6d9", ERR, Logger::REPLICATED_WAL)
+          << "Failed to flush directory "
+          << path.string() << " with error code " << error;
+    }
+
+    ::CloseHandle(dirHandle);
+    path = path.parent_path();
+  }
+#else
+  // POSIX implementation (already in your code)
   do {
     auto fd = ::open(path.c_str(), O_DIRECTORY | O_RDONLY);
     ADB_PROD_ASSERT(fd >= 0) << "failed to open directory " << path.string()

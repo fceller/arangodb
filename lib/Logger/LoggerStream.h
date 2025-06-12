@@ -64,10 +64,7 @@ class LoggerStreamBase {
   template<typename T>
   LoggerStreamBase& operator<<(T const& obj) noexcept {
     try {
-   // --- FIXWINDOWS
-//   #ifndef _WIN32
-      _out << obj;
-//   #endif
+       _out << obj;
     } catch (...) {
       // ignore any errors here. logging should not have side effects
     }

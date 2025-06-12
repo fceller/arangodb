@@ -522,10 +522,15 @@ ResultT<NodePtr> buildPathAndExecute(Node const* node, Iter begin, Iter end,
       if constexpr (std::is_same_v<boost::split_iterator<const char*>, Iter>) {
         return boost::copy_range<std::string>(*begin);
       } else {
-#ifdef FIXWINDOWS
+#ifndef _WIN32
         return std::string{*begin};
 #else
-        return std::string{};
+        auto&& value = *begin;
+        if constexpr (std::is_same_v<std::decay_t<decltype(value)>, char>) {
+            return std::string(1, value);  // single char
+        } else {
+            return std::string(value.begin(), value.end()); 
+        }
 #endif
       }
     }(begin);

@@ -28,7 +28,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
-// --- FIXWINDOWS
+
 #ifdef _WIN32
 #include <iostream>
 #include <type_traits>

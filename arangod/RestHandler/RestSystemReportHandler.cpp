@@ -78,7 +78,7 @@ std::string exec(std::string const& cmd) {
   return result;
 }
 }  // namespace
-#endif // FIXWINDOWS
+#endif
 
 
 bool RestSystemReportHandler::isAdminUser() const {

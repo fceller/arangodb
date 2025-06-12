@@ -1676,7 +1676,7 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
   }
   return std::string(p, binaryPathLength - installPathLength);
 }
-// --- FIXWINDOWS
+
 #ifndef _WIN32
 [[maybe_unused]] static bool CopyFileContents(int srcFD, int dstFD,
                                               TRI_read_t fileSize,

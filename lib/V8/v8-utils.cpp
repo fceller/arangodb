@@ -5097,7 +5097,7 @@ static void JS_termsize(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("termsize()");
   }
 
-  auto s = terminal_utils::defaultTerminalSize();
+  auto s = terminal_utils::TRI_DefaultTerminalSize();
   v8::Handle<v8::Array> list = v8::Array::New(isolate, 2);
   list->Set(context, 0, v8::Integer::New(isolate, s.rows)).FromMaybe(false);
   list->Set(context, 1, v8::Integer::New(isolate, s.columns)).FromMaybe(false);

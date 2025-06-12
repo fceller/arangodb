@@ -181,7 +181,6 @@ TRI_pid_t Thread::currentProcessId() {
 }
 
 /// @brief returns the kernel thread id
-// --- FIXWINDOWS 
 // Note: On Windows, this is the same as the thread id. TODO: AR: Varma
 #ifndef _WIN32
 #ifdef HAVE_SYS_GETTID

@@ -35,8 +35,13 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-#ifdef FIXWINDOWS
+#ifndef _WIN32
 #include <arpa/inet.h>
+#else
+#include <winsock2.h>
+#include <ws2tcpip.h> // for inet_pton
+#include <iostream> 
+#pragma comment(lib, "ws2_32.lib")
 #endif
 
 using namespace arangodb;
@@ -125,11 +130,12 @@ AqlValue functions::IpV4ToNumber(ExpressionContext* expressionContext,
 
     struct in_addr addr;
     memset(&addr, 0, sizeof(struct in_addr));
-#ifdef FIXWINDOWS
-    int result = inet_pton(AF_INET, &buffer[0], &addr);
-#else
-    int result = 1;
+#ifdef _WIN32
+    // on Windows, we need to initialize the Winsock library
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2,2), &wsaData);
 #endif
+    int result = inet_pton(AF_INET, &buffer[0], &addr);
 
     if (result == 1) {
       return AqlValue(AqlValueHintUInt(
@@ -171,11 +177,13 @@ AqlValue functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
 
     struct in_addr addr;
     memset(&addr, 0, sizeof(struct in_addr));
-#ifdef FIXWINDOWS
-    int result = inet_pton(AF_INET, &buffer[0], &addr);
-#else
-    int result = 1;
+
+#ifdef _WIN32
+    // on Windows, we need to initialize the Winsock library
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2,2), &wsaData);
 #endif
+    int result = inet_pton(AF_INET, &buffer[0], &addr);
 
     if (result == 1) {
       return AqlValue(AqlValueHintBool(true));

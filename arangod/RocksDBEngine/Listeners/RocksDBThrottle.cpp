@@ -35,7 +35,6 @@
 
 #include "RocksDBThrottle.h"
 
-// --- FIXWINDOWS
 #ifndef _WIN32
 #include <sys/resource.h>
 #endif

@@ -146,10 +146,9 @@ LogPersistor::LogPersistor(LogId logId,
 
   // TODO - implement segmented logs
   auto filename = std::to_string(logId.id()) + ".log";
-#ifdef FIXWINDOWS
   auto [_, inserted] = _fileSet.emplace(LogFile{.filename = filename});
+
   ADB_PROD_ASSERT(inserted);
-#endif
 
   _activeFile = _fileManager->createWriter(filename);
   auto fileReader = _activeFile->getReader();
