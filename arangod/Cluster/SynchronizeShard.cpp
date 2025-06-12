@@ -636,7 +636,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
             std::chrono::steady_clock::now() >= endTime) {
           // configured timeout exceeded
           LOG_TOPIC("47154", INFO, Logger::REPLICATION)
-              << "stopping initial sync attempt for " << shardNameForLogging
+              << "stopping initial sync attempt for " << ::shardNameForLogging(database, col->name())
               << " after configured timeout of "
               << timeouts.shardSynchronizationAttemptTimeout() << " s. "
               << "a new sync attempt will be scheduled...";

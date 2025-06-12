@@ -65,9 +65,9 @@ class LoggerStreamBase {
   LoggerStreamBase& operator<<(T const& obj) noexcept {
     try {
    // --- FIXWINDOWS
-   #ifndef _WIN32
+//   #ifndef _WIN32
       _out << obj;
-   #endif
+//   #endif
     } catch (...) {
       // ignore any errors here. logging should not have side effects
     }

@@ -158,18 +158,17 @@ bool readTick(irs::bytes_view payload, uint64_t& tickLow,
 struct ThreadGroupStats : std::tuple<size_t, size_t, size_t> {
   explicit ThreadGroupStats(std::tuple<size_t, size_t, size_t>&& stats) noexcept
       : std::tuple<size_t, size_t, size_t>{std::move(stats)} {}
+  ThreadGroupStats(ThreadGroupStats const&) = default;
 };
 
-// --- FIXWINDOWS
-// compiler says unused function
-#ifndef _WIN32
-  ThreadGroupStats(ThreadGroupStats const&) = default;
+
 std::ostream& operator<<(std::ostream& out, ThreadGroupStats const& stats) {
   out << "Active=" << std::get<0>(stats) << ", Pending=" << std::get<1>(stats)
       << ", Threads=" << std::get<2>(stats);
   return out;
 }
-#endif
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct Task
 /// @brief base class for asynchronous maintenance tasks
