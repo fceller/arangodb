@@ -163,7 +163,7 @@ void triggerV8DeadlineNow(bool fromSignal) {
 
 #ifdef _WIN32
 
-static bool SignalHandler(DWORD eventType) {
+static BOOL SignalHandler(DWORD eventType) {
   switch (eventType) {
     case CTRL_BREAK_EVENT:
     case CTRL_C_EVENT:
