@@ -97,7 +97,14 @@ list(APPEND V8_GYP_ARGS
 )
 
 option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
-  
+if(NOT DEFINED V8_BUILD_DEBUG)
+  if(USE_DEBUG_V8 OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(V8_BUILD_DEBUG ON CACHE BOOL "Enable V8 Debug mode" FORCE)
+  else()
+    set(V8_BUILD_DEBUG OFF CACHE BOOL "Enable V8 Debug mode" FORCE)
+  endif()
+endif()
+
 set(GYP_MAIN ${PROJECT_SOURCE_DIR}/gyp/gyp_main.py)
 
 ################################################################################
