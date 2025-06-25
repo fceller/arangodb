@@ -16,6 +16,11 @@
 #   ./start_build.ps
 #
 # --------------------------------------------------------------------------------
+# NOTE: Source by default must be cloned in a path with short path name, e.g.: c:\src
+# or icu-legacy build will hit windows command line maximum limit(8191 characters)!!!
+# Also PATH environment must first be set to bin64uwp and only then to bin64, otherwise
+# the icu-legacy build will fail with being unable to run built tools.
+# --------------------------------------------------------------------------------
 #
 # Use the official Windows image as a base
 FROM mcr.microsoft.com/windows/servercore:ltsc2025
@@ -32,23 +37,14 @@ RUN choco install ninja
 RUN choco install ccache
 RUN choco install nodejs
 RUN choco install yarn
-# RUN choco install mingw
 
 # Install Visual Studio Build Tools with the Windows SDK
+# from https://learn.microsoft.com/en-us/visualstudio/releases/2022/release-history
+# Current buildtools version 17.14.2
 RUN powershell -Command \
-    Invoke-WebRequest -Uri https://aka.ms/vs/17/release/vs_buildtools.exe -OutFile vs_buildtools.exe; \
-    Start-Process -Wait -FilePath .\vs_buildtools.exe -ArgumentList '--quiet --wait --norestart --nocache --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.26100 --add Microsoft.VisualStudio.Component.VC.Redist.14.Latest --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset --add Microsoft.VisualStudio.Component.VC.Llvm.Clang --add Microsoft.VisualStudio.ComponentGroup.NativeDesktop.Llvm.Clang --add Microsoft.VisualStudio.Component.VC.CMake.Project'; \
+    Invoke-WebRequest -Uri https://download.visualstudio.microsoft.com/download/pr/d99c7868-44a2-4254-9861-78e21c19bd34/fa923c074d0a62d965f4dac9020924afbfe452c6ee29b294e227acd1913c0452/vs_BuildTools.exe -OutFile vs_buildtools.exe; \
+    Start-Process -Wait -FilePath .\vs_buildtools.exe -ArgumentList '--quiet --wait --norestart --nocache --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.26100 --add Microsoft.VisualStudio.Component.VC.Redist.14.Latest --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset --add Microsoft.VisualStudio.ComponentGroup.UWP.VC.BuildTools --add Microsoft.VisualStudio.ComponentGroup.UWP.BuildTools --add Microsoft.VisualStudio.Component.VC.Llvm.Clang --add Microsoft.VisualStudio.ComponentGroup.NativeDesktop.Llvm.Clang --add Microsoft.VisualStudio.Component.VC.CMake.Project'; \
     Remove-Item -Force vs_buildtools.exe
-
-# Set environment variables
-# ENV MSYS2_PATH_TYPE inherit
-# ENV MSYS2_DIR C:\\msys64
-
-# # Download and install MSYS2
-# RUN powershell -Command Invoke-WebRequest -Uri https://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-20241208.sfx.exe -OutFile msys2-installer.exe; Start-Process -FilePath msys2-installer.exe -NoNewWindow -Wait; Remove-Item -Force msys2-installer.exe
-
-# # Update MSYS2 and install base development tools (establish a minwgw64 environment)
-# RUN C:\\msys64\\usr\\bin\\bash.exe -lc "pacman -Syu --noconfirm" && C:\\msys64\\usr\\bin\\bash.exe -lc "pacman -S --noconfirm base-devel mingw-w64-x86_64-toolchain"
 
 # Clone the Vcpkg repository
 RUN git clone --verbose --progress https://github.com/microsoft/vcpkg.git C:\vcpkg
@@ -65,10 +61,9 @@ ENV CMAKE_TOOLCHAIN_FILE="C:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
 RUN git config --global --add safe.directory C:/build/*
 
 # Set environment variables
-ENV PATH="C:\\msys64\\mingw64\\bin;c:\\Program Files\\nodejs;c:\\Program Files (x86)\\Yarn\\bin;c:\\ProgramData\\chocolatey\\bin;C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0;C:\\msys64\\usr\\bin;C:\\Python311;C:\\Program Files\\Git\\bin;C:\\Windows\\SysWOW64${PATH}"
+ENV PATH="C:\\msys64\\mingw64\\bin;c:\\Program Files\\nodejs;c:\\Program Files (x86)\\Yarn\\bin;c:\\ProgramData\\chocolatey\\bin;C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0;C:\\msys64\\usr\\bin;C:\\Python311;C:\\Program Files\\Git\\bin;C:\\Windows\\SysWOW64;c:\Windows;C:\\Program Files\\Git\\usr\\bin;c:\src\3rdParty\icu-legacy\bin64uwp;c:\src\3rdParty\icu-legacy\bin64;${PATH}"
 
 # Copy start_build.ps1 / setvar scripts to the container
-COPY *.ps1 /
 COPY *.bat /
 
 SHELL ["C:\\Windows\\SysWOW64\\cmd.exe","/S","/C"]
