@@ -104,7 +104,18 @@ set(V8_VERSION
 )
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
 set(V8_SUB_DIR "v8")
-add_subdirectory(v8-build)
+
+function(setup_v8)
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(V8_BUILD_DEBUG ON CACHE BOOL "Enable V8 debug mode" FORCE)
+  else()
+    set(V8_BUILD_DEBUG OFF CACHE BOOL "Enable V8 debug mode" FORCE)
+  endif()
+  add_subdirectory(v8-build)
+endfunction()
+
+setup_v8()
+
 add_library(v8_interface INTERFACE)
 target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
 
