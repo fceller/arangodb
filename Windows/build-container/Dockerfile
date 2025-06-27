@@ -59,6 +59,7 @@ ENV CMAKE_TOOLCHAIN_FILE="C:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
 
 # Silence git warnings
 RUN git config --global --add safe.directory C:/build/*
+RUN git config --global --add safe.directory C:/src/*
 
 # Set environment variables
 ENV PATH="C:\\msys64\\mingw64\\bin;c:\\Program Files\\nodejs;c:\\Program Files (x86)\\Yarn\\bin;c:\\ProgramData\\chocolatey\\bin;C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0;C:\\msys64\\usr\\bin;C:\\Python311;C:\\Program Files\\Git\\bin;C:\\Windows\\SysWOW64;c:\Windows;C:\\Program Files\\Git\\usr\\bin;c:\src\3rdParty\icu-legacy\bin64uwp;c:\src\3rdParty\icu-legacy\bin64;${PATH}"
