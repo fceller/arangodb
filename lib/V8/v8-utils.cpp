@@ -4645,7 +4645,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   timeoutms = correctTimeoutToExecutionDeadline(timeoutms);
 
   ExternalProcessStatus external;
-  auto historicStatus = getHistoricStatus(pid._pid, v8g->_server);
+  auto historicStatus = arangodb::getHistoricStatus(pid._pid, v8g->_server);
   if (historicStatus.has_value()) {
     external = *historicStatus;
   } else {

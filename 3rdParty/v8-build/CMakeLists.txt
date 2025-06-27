@@ -224,7 +224,20 @@ if (WIN32)
     "${PROJECT_NAME}: Libraries"
   )
 
+  if(CMAKE_CONFIGURATION_TYPES)
+    set(ACTIVE_CONFIG "${CMAKE_CFG_INTDIR}")  # For MSVC or Xcode
+  else()
+    set(ACTIVE_CONFIG "${CMAKE_BUILD_TYPE}")  # For Ninja, Unix Makefiles
+  endif()
+
+
   foreach (MS_TARGET_CONF ${V8_TARGET_ARCHS})
+    # MS_TARGET_CONF is the configuration name, e.g. "Debug" or "Release"
+    # Build only the active configuration
+    if(NOT "${MS_TARGET_CONF}" STREQUAL "${ACTIVE_CONFIG}")
+      continue()
+    endif()
+
     string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
     ExternalProject_Add(v8_build_${MS_TARGET_CONF_LOWER}
       BUILD_IN_SOURCE

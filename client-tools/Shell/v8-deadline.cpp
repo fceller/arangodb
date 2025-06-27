@@ -78,7 +78,8 @@ static void JS_SetExecutionDeadlineTo(
   TRI_V8_TRY_CATCH_END
 }
 
-bool isExecutionDeadlineReached() {
+
+bool real_isExecutionDeadlineReached() {
   std::lock_guard mutex{singletonDeadlineMutex};
   auto when = executionDeadline;
   if (when < 0.00001) {
@@ -92,7 +93,7 @@ bool isExecutionDeadlineReached() {
   return true;
 }
 
-bool isExecutionDeadlineReached(v8::Isolate* isolate) {
+bool real_isExecutionDeadlineReachedIsolate(v8::Isolate* isolate) {
   if (isExecutionDeadlineReached()) {
     TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, errorState, true);
     return true;
@@ -100,7 +101,7 @@ bool isExecutionDeadlineReached(v8::Isolate* isolate) {
   return false;
 }
 
-double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
+double real_correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
   std::lock_guard mutex{singletonDeadlineMutex};
   auto when = executionDeadline;
   if (when < 0.00001) {
@@ -114,7 +115,7 @@ double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
   return delta;
 }
 
-std::chrono::milliseconds correctTimeoutToExecutionDeadline(
+std::chrono::milliseconds real_correctTimeoutToExecutionDeadlineMs(
     std::chrono::milliseconds timeout) {
   std::lock_guard mutex{singletonDeadlineMutex};
   using namespace std::chrono;
@@ -136,7 +137,7 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(
   return std::min(delta, timeout);
 }
 
-uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
+uint32_t real_correctTimeoutToExecutionDeadlineU32(uint32_t timeoutMS) {
   std::lock_guard mutex{singletonDeadlineMutex};
   auto when = executionDeadline;
   if (when < 0.00001) {
@@ -150,7 +151,7 @@ uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
   return delta;
 }
 
-void triggerV8DeadlineNow(bool fromSignal) {
+void real_triggerV8DeadlineNow(bool fromSignal) {
   // Set the deadline to expired:
   std::lock_guard mutex{singletonDeadlineMutex};
   errorState = fromSignal ? errorExternalDeadline : errorProcessMonitor;
@@ -293,7 +294,7 @@ static void JS_GetDeadlineString(
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8Deadline(v8::Isolate* isolate, uint32_t timeout) {
+void real_TRI_InitV8Deadline(v8::Isolate* isolate, uint32_t timeout) {
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ADD_TO_PID_MONITORING"),
       JS_AddPidToMonitor);
@@ -314,3 +315,20 @@ void TRI_InitV8Deadline(v8::Isolate* isolate, uint32_t timeout) {
     executionDeadline = TRI_microtime() + timeout;
   }
 }
+
+static const ExecutionDeadlineApi realApi = {
+  &arangodb::real_getHistoricStatus,
+  &real_isExecutionDeadlineReached,
+  &real_isExecutionDeadlineReachedIsolate,
+  &real_correctTimeoutToExecutionDeadlineS,
+  &real_correctTimeoutToExecutionDeadlineMs,
+  &real_correctTimeoutToExecutionDeadlineU32,
+  &real_TRI_InitV8Deadline,
+  &real_triggerV8DeadlineNow
+};
+
+static struct InitRealDeadlineApi {
+  InitRealDeadlineApi() {
+    registerExecutionDeadlineApi(realApi);
+  }
+} initRealDeadlineApi;
