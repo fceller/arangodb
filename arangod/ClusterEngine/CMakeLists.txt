@@ -22,7 +22,7 @@ target_link_libraries(arango_cluster_engine
   boost_boost)
 
 if (USE_V8)
-  target_link_libraries(arango_cluster_engine arango_v8 arango_v8_no_deadline)
+  target_link_libraries(arango_cluster_engine arango_v8)
 endif()
 
 target_include_directories(arango_cluster_engine PUBLIC

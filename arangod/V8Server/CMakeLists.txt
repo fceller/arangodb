@@ -30,7 +30,6 @@ target_link_libraries(arango_v8server
   arango_iresearch
   arango_replication
   arango_v8
-  arango_v8_no_deadline
   ${V8_LIBS})
 
 target_include_directories(arango_v8server PRIVATE
