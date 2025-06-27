@@ -120,4 +120,7 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   bool _enabled;
 };
 
+std::optional<ExternalProcessStatus> real_getHistoricStatus(
+    TRI_pid_t pid, application_features::ApplicationServer& server);
+    
 }  // namespace arangodb

@@ -49,12 +49,28 @@
 #include <signal.h>
 #endif
 
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#else
+inline void ADB_WindowsEntryFunction() {}
+inline void ADB_WindowsExitFunction(int, void*) {}
+#endif
+
+#if (_MSC_VER >= 1)
+// Disable a warning caused by the call to ADB_WindowsExitFunction() in
+// ~ArangoGlobalContext().
+#pragma warning(push)
+#pragma warning( \
+    disable : 4722)  // destructor never returns, potential memory leak
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-
+#ifndef _WIN32
 static void ReopenLog(int) { Logger::reopen(); }
+#endif
 }  // namespace
 
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
@@ -66,6 +82,7 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[],
       _runRoot(
           TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), installDirectory)),
       _ret(EXIT_FAILURE) {
+#ifndef _WIN32
 #ifndef __GLIBC__
   // Increase default stack size for libmusl:
   pthread_attr_t a;
@@ -74,6 +91,9 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[],
   pthread_attr_setguardsize(&a, 4096);             // one page
   pthread_setattr_default_np(&a);
 #endif
+#endif
+
+  ADB_WindowsEntryFunction();
 
   // global initialization
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
@@ -87,7 +107,9 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[],
 ArangoGlobalContext::~ArangoGlobalContext() {
   CONTEXT = nullptr;
 
+#ifndef _WIN32
   signal(SIGHUP, SIG_IGN);
+#endif
 
   RandomGenerator::shutdown();
   TRI_ShutdownProcess();
@@ -98,7 +120,11 @@ int ArangoGlobalContext::exit(int ret) {
   return _ret;
 }
 
-void ArangoGlobalContext::installHup() { signal(SIGHUP, ReopenLog); }
+void ArangoGlobalContext::installHup() {
+#ifndef _WIN32
+  signal(SIGHUP, ReopenLog);
+#endif
+}
 
 void ArangoGlobalContext::normalizePath(std::vector<std::string>& paths,
                                         char const* whichPath, bool fatal) {
@@ -133,3 +159,7 @@ void ArangoGlobalContext::normalizePath(std::string& path,
     }
   }
 }
+
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif

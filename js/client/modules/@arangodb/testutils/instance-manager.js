@@ -100,6 +100,10 @@ class instanceManager {
     this.dbName = "_System";
     this.userName = "root";
     this.memlayout = {};
+    // be more sluggish with memory when running instrumented binaries
+    if (this.options.isInstrumented) {
+      this.options.memory *= 1.1;
+    }
     this.cleanup = options.cleanup && options.server === undefined;
     if (!options.hasOwnProperty('startupMaxCount')) {
       this.startupMaxCount = 300;
@@ -496,7 +500,108 @@ class instanceManager {
     }
     this.launchFinalize(startTime);
   }
+  printProcessInfo(startTime) {
+    if (this.options.noStartStopLogs) {
+      return;
+    }
+    print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
+    var matchPort = /.*:.*:([0-9]*)/;
+    var ports = [];
+    var processInfo = [];
+    this.arangods.forEach(arangod => {
+      let res = matchPort.exec(arangod.endpoint);
+      if (!res) {
+        return;
+      }
+      var port = res[1];
+      if (arangod.isAgent()) {
+        if (this.options.sniffAgency) {
+          ports.push('port ' + port);
+        }
+      } else if (arangod.isRole(instanceRole.dbServer)) {
+        if (this.options.sniffDBServers) {
+          ports.push('port ' + port);
+        }
+      } else {
+        ports.push('port ' + port);
+      }
+      processInfo.push('  [' + arangod.name +
+                       '] up with pid ' + arangod.pid +
+                       ' - ' + arangod.dataDir);
+    });
+    print(processInfo.join('\n') + '\n');
+  }
+  launchTcpDump(name) {
+    if (this.options.sniff === undefined || this.options.sniff === false) {
+      return true;
+    }
+    this.options.cleanup = false;
+    let device = 'lo';
+    if (platform.substr(0, 3) === 'win') {
+      device = '1';
+    }
+    if (this.options.sniffDevice !== undefined) {
+      device = this.options.sniffDevice;
+    }
 
+    let prog = 'tcpdump';
+    if (platform.substr(0, 3) === 'win') {
+      prog = 'c:/Program Files/Wireshark/tshark.exe';
+    }
+    if (this.options.sniffProgram !== undefined) {
+      prog = this.options.sniffProgram;
+    }
+    
+    let pcapFile = fs.join(this.rootDir, name + 'out.pcap');
+    let args;
+    if (prog === 'ngrep') {
+      args = ['-l', '-Wbyline', '-d', device];
+    } else {
+      args = ['-ni', device, '-s0', '-w', pcapFile];
+    }
+    let count = 0;
+    this.arangods.forEach(arangod => {
+      if (count > 0) {
+        args.push('or');
+      }
+      args.push('port');
+      args.push(arangod.port);
+      count ++;
+    });
+
+    if (this.options.sniff === 'sudo') {
+      args.unshift(prog);
+      prog = 'sudo';
+    }
+    print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
+    try {
+      this.tcpdump = executeExternal(prog, args);
+      sleep(5);
+      let exitStatus = statusExternal(this.tcpdump.pid, false);
+      if (exitStatus.status !== "RUNNING") {
+        crashUtils.GDB_OUTPUT += `Failed to launch tcpdump: ${JSON.stringify(exitStatus)} '${prog}' ${JSON.stringify(args)}`;
+        this.tcpdump = null;
+        return false;
+      }
+    } catch (x) {
+      crashUtils.GDB_OUTPUT += `Failed to launch tcpdump: ${x.message} ${prog} ${JSON.stringify(args)}`;
+      return false;
+    }
+    return true;
+  }
+  stopTcpDump() {
+    if (this.tcpdump !== null) {
+      print(CYAN + "Stopping tcpdump" + RESET);
+      killExternal(this.tcpdump.pid);
+      try {
+        statusExternal(this.tcpdump.pid, true);
+      } catch (x)
+      {
+        print(Date() + ' wasn\'t able to stop tcpdump: ' + x.message );
+      }
+      this.tcpdump = null;
+    }
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief scans the log files for important infos
@@ -506,10 +611,12 @@ class instanceManager {
   }
   readImportantLogLines (logPath) {
     let importantLines = {};
-    // TODO: iterate over instances
-    // for (let i = 0; i < list.length; i++) {
-    // }
-
+    this.arangods.forEach(arangod => {
+      let lines = arangod.readImportantLogLines();
+      if (lines.length > 0) {
+        importantLines[arangod.name] = lines;
+      }
+    });
     return importantLines;
   }
 
@@ -545,7 +652,7 @@ class instanceManager {
       } else {
         return {
           status: false,
-          message: yaml.safedump(reply.body)
+          message: yaml.safeDump(reply.body)
         };
       }
     } catch (ex) {
@@ -631,6 +738,10 @@ class instanceManager {
     this.arangods.forEach((arangod) => {
       arangod.aggregateDebugger();
     });
+    let lines = this.readImportantLogLines();
+    if (lines !== {} ) {
+      rp.addFailRunsMessage("found log relevant log-lines: \n" + yaml.safeDump(lines));
+    }
     return true;
   }
 
@@ -711,7 +822,6 @@ class instanceManager {
     }
 
     var shutdownTime = time();
-
     while (toShutdown.length > 0) {
       toShutdown = toShutdown.filter(arangod => {
         if (arangod.exitStatus === null) {
@@ -1506,6 +1616,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `dbServers`: number of DB-Servers to use',
     '   - `coordinators`: number coordinators to use',
     '   - `extraArgs`: list of extra commandline arguments to add to arangod',
+    '',
     ' SUT monitoring',
     '   - `sleepBeforeStart` : sleep at tcpdump info - use this to dump traffic or attach debugger',
     '   - `disableClusterMonitor`: if set to false, an arangosh is started that will send',
@@ -1515,6 +1626,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `serverRoot`: directory where data/ points into the db server. Use in',
     '                   conjunction with "server".',
     '   - `memprof`: take snapshots (requries memprof enabled build)',
+    '',
     ' SUT packet capturing:',
     '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
     '              false / true / sudo',
@@ -1523,6 +1635,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `sniffAgency`: when sniffing cluster, sniff agency traffic too? (true)',
     '   - `sniffDBServers`: when sniffing cluster, sniff dbserver traffic too? (true)',
     '   - `sniffFilter`: only launch tcpdump for tests matching this string',
+    '',
     ' SUT & valgrind:',
     '   - `valgrind`: if set the programs are run with the valgrind',
     '     memory checker; should point to the valgrind executable',

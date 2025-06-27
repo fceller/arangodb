@@ -32,28 +32,43 @@
 #include <optional>
 #include "Basics/process-utils.h"
 
+
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
-}  // namespace arangodb
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set a point in time after which we will abort external connection
-////////////////////////////////////////////////////////////////////////////////
+struct ExecutionDeadlineApi {
+  std::optional<ExternalProcessStatus> (*getHistoricStatus)(
+    TRI_pid_t, arangodb::application_features::ApplicationServer&);
+
+  bool (*isExecutionDeadlineReached)();
+  bool (*isExecutionDeadlineReachedIsolate)(v8::Isolate*);
+  double (*correctTimeoutToExecutionDeadlineS)(double);
+  std::chrono::milliseconds (*correctTimeoutToExecutionDeadlineMs)(
+      std::chrono::milliseconds);
+  uint32_t (*correctTimeoutToExecutionDeadlineU32)(uint32_t);
+  void (*TRI_InitV8Deadline)(v8::Isolate*, uint32_t);
+  void (*triggerV8DeadlineNow)(bool);
+};
+
+extern ExecutionDeadlineApi g_deadlineApi;
+
+inline std::optional<ExternalProcessStatus> getHistoricStatus(
+    TRI_pid_t pid, arangodb::application_features::ApplicationServer& server) {
+  return g_deadlineApi.getHistoricStatus(pid, server);
+}
+
+void registerExecutionDeadlineApi(const ExecutionDeadlineApi& api);
+
+}
+
+// These are called by the rest of the system
 bool isExecutionDeadlineReached();
 bool isExecutionDeadlineReached(v8::Isolate* isolate);
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds);
 std::chrono::milliseconds correctTimeoutToExecutionDeadline(
     std::chrono::milliseconds timeout);
 uint32_t correctTimeoutToExecutionDeadline(uint32_t timeout);
-
-void TRI_InitV8Deadline(v8::Isolate* isolate);
-
-// make the deadline handling bite Now.
+void TRI_InitV8Deadline(v8::Isolate* isolate, uint32_t timeout);
 void triggerV8DeadlineNow(bool fromSignal);
-
-namespace arangodb {
-extern std::optional<ExternalProcessStatus> getHistoricStatus(
-    TRI_pid_t pid, arangodb::application_features::ApplicationServer& server);
-}

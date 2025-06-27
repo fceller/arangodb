@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Aql/QueryPlanCache.h"
 #include "Auth/UserManager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -481,23 +482,26 @@ void Collections::enumerate(
     TRI_vocbase_t* vocbase,
     std::function<void(std::shared_ptr<LogicalCollection> const&)> const&
         func) {
-  if (ServerState::instance()->isCoordinator()) {
-    auto& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    std::vector<std::shared_ptr<LogicalCollection>> colls =
-        ci.getCollections(vocbase->name());
-
-    for (std::shared_ptr<LogicalCollection> const& c : colls) {
-      if (!c->deleted()) {
-        func(c);
-      }
-    }
-  } else {
-    for (auto const& c : vocbase->collections(false)) {
-      if (!c->deleted()) {
-        func(c);
-      }
-    }
+  auto const collections = getNotDeleted(*vocbase);
+  for (auto& collection : collections) {
+    func(collection);
   }
+}
+
+std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
+    TRI_vocbase_t const& vocbase) {
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  if (ServerState::instance()->isCoordinator()) {
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    collections = ci.getCollections(vocbase.name());
+  } else {
+    collections = vocbase.collections(false);
+  }
+  std::vector<std::shared_ptr<LogicalCollection>> result;
+  std::erase_if(collections, [](std::shared_ptr<LogicalCollection> const& c) {
+    return c->deleted();
+  });
+  return collections;
 }
 
 /*static*/ Result methods::Collections::lookup(  // find collection
@@ -1281,6 +1285,8 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
     }
   }
 
+  coll.vocbase().queryPlanCache().invalidate(coll.guid());
+
 // If we are a coordinator in a cluster, we have to behave differently:
 #ifdef USE_ENTERPRISE
   res = DropColEnterprise(&coll, options.allowDropSystem);
@@ -1291,6 +1297,10 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), options.allowDropSystem);
   }
 #endif
+
+  if (res.ok()) {
+    coll.vocbase().queryPlanCache().invalidate(coll.guid());
+  }
 
   LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES,
                res.fail() && res.isNot(TRI_ERROR_FORBIDDEN) &&

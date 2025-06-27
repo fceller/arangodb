@@ -40,7 +40,11 @@ struct LogMessage;
 class LogTopic;
 }  // namespace arangodb
 
-namespace arangodb::logger {
+using namespace arangodb::basics;
+
+namespace arangodb {
+  namespace logger {
+
 
 struct Appenders {
   void addAppender(LogGroup const&, std::string const& definition);
@@ -92,7 +96,8 @@ struct Appenders {
         definition2appenders;
   };
 
-  arangodb::basics::ReadWriteLock _appendersLock;
+  basics::ReadWriteLock _appendersLock;
   std::array<Group, LogGroup::Count> _groups;
 };
-}  // namespace arangodb::logger
+}  // namespace logger
+}  // namespace arangodb

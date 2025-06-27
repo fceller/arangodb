@@ -28,29 +28,47 @@
 #include <optional>
 #include "v8-deadline.h"
 
-// arangod dummy implementation doing nothing
-void setExecutionDeadlineInMS(uint64_t timeout) {}
-
-bool isExecutionDeadlineReached() { return false; }
-bool isExecutionDeadlineReached(v8::Isolate* isolate) { return false; }
-
-double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
-  return timeoutSeconds;
-}
-
-std::chrono::milliseconds correctTimeoutToExecutionDeadline(
-    std::chrono::milliseconds timeout) {
-  return timeout;
-}
-
-uint32_t correctTimeoutToExecutionDeadline(uint32_t timeout) { return timeout; }
-
-void TRI_InitV8Deadline(v8::Isolate* isolate) {}
-void triggerV8DeadlineNow(bool fromSignal) {}
-
 namespace arangodb {
-std::optional<ExternalProcessStatus> getHistoricStatus(
-    TRI_pid_t pid, arangodb::application_features::ApplicationServer& server) {
+
+static std::optional<ExternalProcessStatus> stub_getHistoricStatus(
+    TRI_pid_t, arangodb::application_features::ApplicationServer&) {
   return std::nullopt;
 }
+
+ // arangod dummy implementation doing nothing
+ExecutionDeadlineApi g_deadlineApi = {
+    .getHistoricStatus = &stub_getHistoricStatus,
+    .isExecutionDeadlineReached = []() { return false; },
+    .isExecutionDeadlineReachedIsolate = [](v8::Isolate*) { return false; },
+    .correctTimeoutToExecutionDeadlineS = [](double timeout) { return timeout; },
+    .correctTimeoutToExecutionDeadlineMs = [](std::chrono::milliseconds t) { return t; },
+    .correctTimeoutToExecutionDeadlineU32 = [](uint32_t t) { return t; },
+    .TRI_InitV8Deadline = [](v8::Isolate*, uint32_t) {},
+    .triggerV8DeadlineNow = [](bool) {}
+};
+
+void registerExecutionDeadlineApi(const ExecutionDeadlineApi& api) {
+  g_deadlineApi = api;
+}
+
 }  // namespace arangodb
+
+bool isExecutionDeadlineReached() { return arangodb::g_deadlineApi.isExecutionDeadlineReached(); }
+bool isExecutionDeadlineReached(v8::Isolate* i) { return arangodb::g_deadlineApi.isExecutionDeadlineReachedIsolate(i); }
+
+double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
+  return arangodb::g_deadlineApi.correctTimeoutToExecutionDeadlineS(timeoutSeconds);
+} 
+std::chrono::milliseconds correctTimeoutToExecutionDeadline(
+    std::chrono::milliseconds timeout) {
+  return arangodb::g_deadlineApi.correctTimeoutToExecutionDeadlineMs(timeout);
+}
+uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
+  return arangodb::g_deadlineApi.correctTimeoutToExecutionDeadlineU32(timeoutMS);
+}
+void triggerV8DeadlineNow(bool fromSignal) {
+  arangodb::g_deadlineApi.triggerV8DeadlineNow(fromSignal);
+}
+void TRI_InitV8Deadline(v8::Isolate* isolate, uint32_t timeout) {
+  arangodb::g_deadlineApi.TRI_InitV8Deadline(isolate, timeout);
+}

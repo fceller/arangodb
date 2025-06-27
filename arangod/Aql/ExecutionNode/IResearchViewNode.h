@@ -80,7 +80,11 @@ enum class MaterializeType {
   NotMaterialize = 1,   // do not materialize a document
   LateMaterialize = 2,  // a document will be materialized later
   Materialize = 4,      // materialize a document
-  UseStoredValues = 8   // use stored or sort column values
+  UseStoredValues = 8,   // use stored or sort column values
+
+  // combo values
+  NotMaterialize_UseStoredValues = NotMaterialize | UseStoredValues,
+  LateMaterialize_UseStoredValues = LateMaterialize | UseStoredValues
 };
 
 ENABLE_BITMASK_ENUM(MaterializeType);

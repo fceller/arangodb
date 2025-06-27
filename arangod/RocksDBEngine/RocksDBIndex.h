@@ -32,6 +32,7 @@
 
 #include <rocksdb/status.h>
 #include <rocksdb/slice.h>
+#include <rocksdb/iterator.h>
 
 #include <atomic>
 #include <memory>
@@ -106,6 +107,9 @@ class RocksDBIndex : public Index {
 
   void setupCache();
   void destroyCache() noexcept;
+
+  virtual void prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
+                            rocksdb::Slice upper, RocksDBMethods* methods) {}
 
   /// performs a preflight check for an insert operation, not carrying out any
   /// modifications to the index.

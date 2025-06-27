@@ -39,8 +39,21 @@
 #include <velocypack/Slice.h>
 #include <velocypack/SliceBase.tpp>
 
+#if (_MSC_VER >= 1)
+// suppress warnings:
+#pragma warning(push)
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
+// data
+#pragma warning(disable : 4267)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
+// intended?)
+#pragma warning(disable : 4334)
+#endif
 #include <immer/flex_vector_transient.hpp>
 #include <immer/map_transient.hpp>
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 
 #include <deque>
 #include <boost/algorithm/string/find_iterator.hpp>
@@ -509,10 +522,15 @@ ResultT<NodePtr> buildPathAndExecute(Node const* node, Iter begin, Iter end,
       if constexpr (std::is_same_v<boost::split_iterator<const char*>, Iter>) {
         return boost::copy_range<std::string>(*begin);
       } else {
-#ifdef FIXWINDOWS
+#ifndef _WIN32
         return std::string{*begin};
 #else
-        return std::string{};
+        auto&& value = *begin;
+        if constexpr (std::is_same_v<std::decay_t<decltype(value)>, char>) {
+            return std::string(1, value);  // single char
+        } else {
+            return std::string(value.begin(), value.end()); 
+        }
 #endif
       }
     }(begin);

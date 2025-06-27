@@ -74,6 +74,8 @@
 #include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
 
+using namespace arangodb::basics;
+
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
@@ -371,7 +373,7 @@ class Logger {
   static std::unordered_set<std::string>
       _structuredLogParams;  // if in set, means value is true, else, means it's
                              // false
-  static arangodb::basics::ReadWriteLock _structuredParamsLock;
+  static basics::ReadWriteLock _structuredParamsLock;
   static LogTimeFormats::TimeFormat _timeFormat;
   static bool _showLineNumber;
   static bool _shortenFilenames;

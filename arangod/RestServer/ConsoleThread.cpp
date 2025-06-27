@@ -135,6 +135,7 @@ start_color_print('arangodb', true);
 
     TRI_ExecuteJavaScriptString(isolate, startupScript, "startup", false);
 
+#ifndef _WIN32
     // allow SIGINT in this particular thread... otherwise we cannot CTRL-C the
     // console
     sigset_t set;
@@ -145,6 +146,7 @@ start_color_print('arangodb', true);
       LOG_TOPIC("62022", ERR, arangodb::Logger::FIXME)
           << "unable to install signal handler";
     }
+#endif
 
     v8::Handle<v8::Context> context = isolate->GetCurrentContext();
     V8LineEditor console(isolate, context, ".arangod.history");

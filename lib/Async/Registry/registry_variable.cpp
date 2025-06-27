@@ -22,18 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "registry_variable.h"
 
+#include "Async/Registry/promise.h"
+
+#include <thread>
+
 namespace arangodb::async_registry {
 
 Registry registry;
 
 auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {
-    ThreadRegistryGuard() : _registry{registry.add_thread()} {}
-
-    /**
-       Runs when the current thread is deleted
-     */
-    ~ThreadRegistryGuard() {}
+    ThreadRegistryGuard() : _registry{ThreadRegistry::make(registry.metrics)} {
+      registry.add(_registry);
+    }
 
     std::shared_ptr<ThreadRegistry> _registry;
   };

@@ -10,13 +10,17 @@ target_sources(arango_aql PRIVATE
   EnumerateListExecutor.cpp
   EnumeratePathsExecutor.cpp
   FilterExecutor.cpp
+  GroupedSortExecutor.cpp
+  GroupedSortExecutorBackend.cpp
   HashedCollectExecutor.cpp
-  IdExecutor.cpp
-  IndexExecutor.cpp
   IResearchViewExecutor.cpp
   IResearchViewExecutorBase.cpp
   IResearchViewHeapSortExecutor.cpp
   IResearchViewMergeExecutor.cpp
+  IdExecutor.cpp
+  IndexAggregateScanExecutor.cpp
+  IndexDistinctScanExecutor.cpp
+  IndexExecutor.cpp
   JoinExecutor.cpp
   LimitExecutor.cpp
   MaterializeExecutor.cpp
@@ -42,3 +46,9 @@ target_sources(arango_aql PRIVATE
   UnsortedGatherExecutor.cpp
   WindowExecutor.cpp
 )
+
+# --- FIXWINDOWS
+if (NOT WIN32) 
+  target_sources(arangodb_aql PRIVATE 
+      EnumerateNearVectorExecutor.cpp)
+endif()

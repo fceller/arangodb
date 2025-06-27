@@ -24,6 +24,8 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+
+
 #include "Basics/TypeList.h"
 #include "Basics/operating-system.h"
 
@@ -78,6 +80,9 @@ class DumpLimitsFeature;
 class HttpEndpointProvider;
 class EngineSelectorFeature;
 class EnvironmentFeature;
+#ifdef _WIN32
+class WindowsServiceFeature;
+#endif
 class FileDescriptorsFeature;
 class FileSystemFeature;
 class FlushFeature;
@@ -97,6 +102,7 @@ class MaintenanceFeature;
 class MaxMapCountFeature;
 class NetworkFeature;
 class NonceFeature;
+class ApiRecordingFeature;
 class OptionsCheckFeature;
 class PrivilegeFeature;
 class QueryRegistryFeature;
@@ -129,8 +135,10 @@ class V8SecurityFeature;
 class VersionFeature;
 class ViewTypesFeature;
 class ClusterEngine;
+#ifdef ARANGODB_HAVE_FORK
 class DaemonFeature;
 class SupervisorFeature;
+#endif
 class AuditFeature;
 class LicenseFeature;
 class RCloneFeature;
@@ -141,7 +149,10 @@ class RocksDBEngine;
 class RocksDBIndexCacheRefillFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
-
+class VectorIndexFeature;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class ProcessEnvironmentFeature;
+#endif
 namespace transaction {
 
 class ManagerFeature;
@@ -201,6 +212,7 @@ using ArangodFeaturesList = TypeList<
     VersionFeature,
     ActionFeature,
     AgencyFeature,
+    ApiRecordingFeature,
     AqlFeature,
     async_registry::Feature,
     AuthenticationFeature,
@@ -253,6 +265,10 @@ using ArangodFeaturesList = TypeList<
     ReplicationMetricsFeature,
     ReplicationTimeoutFeature,
     SchedulerFeature,
+    VectorIndexFeature,
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    ProcessEnvironmentFeature,
+#endif
 #ifdef USE_V8
     ScriptFeature,
 #endif
@@ -285,6 +301,9 @@ using ArangodFeaturesList = TypeList<
     RocksDBIndexCacheRefillFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,
+#ifdef _WIN32
+    WindowsServiceFeature,
+#endif
 #ifdef TRI_HAVE_GETRLIMIT
     FileDescriptorsFeature,
 #endif

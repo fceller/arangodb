@@ -91,19 +91,19 @@ jsUnity.results.fail = function (index, testName, message) {
   var newtime = jsUnity.env.getDate();
 
   ++testCount;
-
+  let now = newtime.toISOString();
   if (RESULTS[testName] === undefined) {
     if (testCount === 1) {
-      print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " + currentSuiteName +
+      print(now + internal.COLORS.COLOR_RED + " [   FAILED   ] " + currentSuiteName +
            internal.COLORS.COLOR_RESET + " (setUpAll: " + (jsUnity.env.getDate() - STARTTEST) + "ms)");
 
       ENDTEST = newtime;
     }
     print(internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
     if (RESULTS.hasOwnProperty('message')) {
-      RESULTS['message'] += "\n" + currentSuiteName + " - failed at: " + message;
+      RESULTS['message'] += `\n${now}\n${currentSuiteName} - failed at: ${message}`;
     } else {
-      RESULTS['message'] = currentSuiteName + " - failed at: " + message;
+      RESULTS['message'] = `${now}\n${currentSuiteName} - failed at: ${message}`;
     }
     return;
   }
@@ -203,18 +203,15 @@ function matchesTestFilter(suiteName, key) {
   if (testFilter === "undefined" || testFilter === undefined || testFilter === null) {
     return true;
   }
+  const matchFilter = (suite, testCase, filter) => {
+    const [suiteFilter, testCaseFilter] = filter.includes('::') ? filter.split('::') : [suite, filter];
+    return minimatch(suite, suiteFilter) && minimatch(testCase, testCaseFilter);
+  };
   if (typeof testFilter === 'string') {
-    var suiteMatched = true;
-    if (testFilter.includes('::')) {
-      var [suiteFilter, testCaseFilter] = testFilter.split('::');
-      suiteMatched = minimatch(suiteName, suiteFilter);
-      testFilter = testCaseFilter;
-    }
-
-    return suiteMatched && minimatch(key, testFilter);
+    return matchFilter(suiteName, key, testFilter);
   }
   if (Array.isArray(testFilter)) {
-    return testFilter.some(key => matchesTestFilter(suiteName, key));
+    return testFilter.some(filter => matchFilter(suiteName, key, filter));
   }
   return false;
 }

@@ -23,10 +23,6 @@
 
 #include "GeneralServerFeature.h"
 
-#include <chrono>
-#include <stdexcept>
-#include <thread>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/RestActionHandler.h"
 #include "Agency/AgencyFeature.h"
@@ -34,7 +30,7 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
-#include "AsyncRegistryServer/RestHandler.h"
+#include "SystemMonitor/AsyncRegistry/RestHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -74,6 +70,7 @@
 #ifdef USE_V8
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
 #endif
+#include "RestHandler/RestAccessTokenHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
 #include "RestHandler/RestCompactHandler.h"
@@ -100,6 +97,7 @@
 #include "RestHandler/RestOptionsDescriptionHandler.h"
 #include "RestHandler/RestOptionsHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
+#include "RestHandler/RestQueryPlanCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
@@ -140,6 +138,10 @@
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
+#include <chrono>
+#include <stdexcept>
+#include <thread>
+
 using namespace arangodb::rest;
 using namespace arangodb::options;
 
@@ -166,9 +168,7 @@ GeneralServerFeature::GeneralServerFeature(Server& server,
       _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_requests_memory_usage{})),
       _telemetricsMaxRequestsPerInterval(3),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _startedListening(false),
-#endif
       _allowEarlyConnections(false),
       _handleContentEncodingForUnauthenticatedRequests(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -467,19 +467,14 @@ void GeneralServerFeature::start() {
   hf->seal();
 
   std::atomic_store(&_handlerFactory, std::move(hf));
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_allowEarlyConnections || _startedListening);
-#endif
   if (!_allowEarlyConnections) {
     // if HTTP interface is not open yet, open it now
     startListening();
   }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_startedListening);
-#endif
 
-  ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
+  ServerState::setServerMode(ServerState::Mode::MAINTENANCE);
 }
 
 void GeneralServerFeature::initiateSoftShutdown() {
@@ -595,9 +590,7 @@ void GeneralServerFeature::buildServers() {
 }
 
 void GeneralServerFeature::startListening() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_startedListening);
-#endif
 
   EndpointFeature& endpoint =
       server().getFeature<HttpEndpointProvider, EndpointFeature>();
@@ -606,10 +599,7 @@ void GeneralServerFeature::startListening() {
   for (auto& server : _servers) {
     server->startListening(endpointList);
   }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _startedListening = true;
-#endif
 }
 
 void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
@@ -717,6 +707,9 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(RestVocbaseBaseHandler::USERS_PATH,
                      RestHandlerCreator<RestUsersHandler>::createNoData);
 
+  f.addPrefixHandler(RestVocbaseBaseHandler::ACCESS_TOKEN_PATH,
+                     RestHandlerCreator<RestAccessTokenHandler>::createNoData);
+
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData);
 
@@ -753,10 +746,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 #endif
 
   f.addPrefixHandler(
-      "/_api/async_registry",
-      RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
-
-  f.addPrefixHandler(
       "/_api/dump",
       RestHandlerCreator<arangodb::RestDumpHandler>::createNoData);
 
@@ -772,6 +761,10 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler("/_api/query-cache",
                      RestHandlerCreator<RestQueryCacheHandler>::createNoData);
+
+  f.addPrefixHandler(
+      "/_api/query-plan-cache",
+      RestHandlerCreator<RestQueryPlanCacheHandler>::createNoData);
 
   f.addPrefixHandler("/_api/wal",
                      RestHandlerCreator<RestWalAccessHandler>::createNoData);
@@ -845,6 +838,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   // ...........................................................................
   // /_admin
   // ...........................................................................
+
+  f.addPrefixHandler(
+      "/_admin/async-registry",
+      RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_admin/cluster",

@@ -1082,6 +1082,7 @@ bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
     }
     switch (dep->getType()) {
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::ENUMERATE_NEAR_VECTORS:
       case aql::ExecutionNode::INDEX:
       case aql::ExecutionNode::JOIN:
       case aql::ExecutionNode::TRAVERSAL:
@@ -1116,6 +1117,7 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
     }
     switch (setter->getType()) {
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::ENUMERATE_NEAR_VECTORS:
       case aql::ExecutionNode::ENUMERATE_LIST:
       case aql::ExecutionNode::SUBQUERY:
       case aql::ExecutionNode::SUBQUERY_END:
@@ -2128,9 +2130,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   // Workaround for using clang15 during asan build.
   // FIXME: remove it as soon as we switch to clang16 or higher
   auto infosTuple = buildExecutorInfo(engine, std::move(reader));
-#ifdef FIXWINDOWS
   auto& materializeType = std::get<0>(infosTuple);
-#endif
   auto& executorInfos = std::get<1>(infosTuple);
   auto& registerInfos = std::get<2>(infosTuple);
   // guaranteed by optimizer rule
@@ -2146,7 +2146,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   auto const executorIdx =
       getExecutorIndex(sorted, ordered, heapsort, emitSearchDoc);
   return irs::ResolveBool(_options.parallelism > 1, [&]<bool copyStored>() {
-#ifdef FIXWINDOWS
     switch (materializeType) {
       case MaterializeType::NotMaterialize:
         return kExecutors<copyStored,
@@ -2160,42 +2159,33 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         return kExecutors<copyStored,
                           MaterializeType::Materialize>[executorIdx](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
-      case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
+      case MaterializeType::NotMaterialize_UseStoredValues:
 #ifdef USE_ENTERPRISE
         if (encrypted) {
           return kExecutors<true,
-                            MaterializeType::NotMaterialize |
-                                MaterializeType::UseStoredValues>[executorIdx](
+                            MaterializeType::NotMaterialize_UseStoredValues>[executorIdx](
               &engine, this, std::move(registerInfos),
               std::move(executorInfos));
         }
 #endif
         return kExecutors<copyStored,
-                          MaterializeType::NotMaterialize |
-                              MaterializeType::UseStoredValues>[executorIdx](
+                          MaterializeType::NotMaterialize_UseStoredValues>[executorIdx](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
-      case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
+      case MaterializeType::LateMaterialize_UseStoredValues:
+        // TODO remove this case when 3.11 is deprecated
+        // it is used for compatibility with old versions
 #ifdef USE_ENTERPRISE
         if (encrypted) {
-          return kExecutors<true,
-                            MaterializeType::LateMaterialize |
-                                MaterializeType::UseStoredValues>[executorIdx](
+          return kExecutors<true,  MaterializeType::LateMaterialize_UseStoredValues[executorIdx](
               &engine, this, std::move(registerInfos),
               std::move(executorInfos));
         }
 #endif
-        return kExecutors<copyStored,
-                          MaterializeType::LateMaterialize |
-                              MaterializeType::UseStoredValues>[executorIdx](
+        return kExecutors<copyStored, MaterializeType::LateMaterialize_UseStoredValues>[executorIdx](
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       default:
         ADB_UNREACHABLE;
     }
-#else
-      return kExecutors<copyStored,
-                                MaterializeType::NotMaterialize>[executorIdx](
-                  &engine, this, std::move(registerInfos), std::move(executorInfos));
-#endif
   });
 }
 

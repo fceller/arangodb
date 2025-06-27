@@ -31,7 +31,8 @@
 #include <mutex>
 #include <string>
 
-namespace arangodb::basics {
+namespace arangodb {
+namespace basics {  
 
 /// @brief read-write lock, slow but just using CPP11
 /// This class has two other advantages:
@@ -127,4 +128,5 @@ class ReadWriteLock {
                     (QUEUED_WRITER_MASK & (QUEUED_WRITER_INC >> 1)) == 0,
                 "QUEUED_WRITER_INC must be first bit in QUEUED_WRITER_MASK");
 };
-}  // namespace arangodb::basics
+} // namespace basics
+}  // namespace arangodb

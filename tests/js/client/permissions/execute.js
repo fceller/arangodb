@@ -45,7 +45,12 @@ function testSuite() {
   const continueExternal = internal.continueExternal;
   const arangodb = require("@arangodb");
 
-  let command = "/bin/true";
+  let command;
+  if (internal.platform.substr(0, 3) !== 'win') {
+    command = "/bin/true";
+  } else {
+    command = "notepad.exe";
+  }
 
   return {
     testExternalProcesses : function() {

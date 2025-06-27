@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/fpconv.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -1144,20 +1145,14 @@ AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
     appendAsString(vopts, adapter, value);
     size_t const valueLength = buffer->length();
 
-#ifdef FIXWINDOWS
     size_t const searchOffset = buffer->length();
-#endif
     appendAsString(vopts, adapter, search);
     size_t const searchLength = buffer->length() - valueLength;
 
     if (searchLength > 0) {
-#ifdef FIXWINDOWS
       char const* found = static_cast<char const*>(
           memmem(buffer->data(), valueLength, buffer->data() + searchOffset,
                  searchLength));
-#else
-      char const* found = 0;
-#endif
 
       if (found != nullptr) {
         if (willReturnIndex) {

@@ -631,19 +631,18 @@ class IResearchInvertedIndexMergeIterator final
 
  protected:
   void resetImpl() final {
-#ifdef FIXWINDOWS
     _segments.clear();
     auto const size = _snapshot.size();
     _segments.reserve(size);
     for (size_t i = 0; i < size; ++i) {
       auto& segment = _snapshot[i];
-      auto it = segment.mask(_filter->execute({.segment = segment}));
+      auto it = segment.mask(
+          _filter->execute({.segment = segment, .wand = irs::WandContext{}}));
       // at least sort column should be here
       TRI_ASSERT(!_projectionsPrototype.empty());
       _segments.emplace_back(std::move(it), segment, _projectionsPrototype);
     }
     _heap_it.Reset(_segments);
-#endif
   }
 
   bool nextImpl(LocalDocumentIdCallback const& callback,

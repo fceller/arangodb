@@ -104,7 +104,18 @@ set(V8_VERSION
 )
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
 set(V8_SUB_DIR "v8")
-add_subdirectory(v8-build)
+
+function(setup_v8)
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(USE_DEBUG_V8 ON CACHE BOOL "Enable V8 debug mode" FORCE)
+  else()
+    set(USE_DEBUG_V8 OFF CACHE BOOL "Disable V8 debug mode" FORCE)
+  endif()
+  add_subdirectory(v8-build)
+endfunction()
+
+setup_v8()
+
 add_library(v8_interface INTERFACE)
 target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
 
@@ -120,6 +131,8 @@ set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 add_subdirectory(icu-legacy)
 set(ICU64_LIBS "${ICU64_LIBS}" PARENT_SCOPE)
 set(ICU64_INCLUDE_DIR "${ICU64_INCLUDE_DIR}" PARENT_SCOPE)
+set(ICU_DT_LEGACY "${ICU_DT_LEGACY}" PARENT_SCOPE)
+set(ICU_DT_LEGACY_DEST "${ICU_DT_LEGACY_DEST}" PARENT_SCOPE)
 
 ################################################################################
 ## Google Abseil

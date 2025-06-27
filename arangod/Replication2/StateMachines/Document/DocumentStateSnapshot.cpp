@@ -223,11 +223,7 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
     // busy loop.
     std::this_thread::sleep_for(std::chrono::seconds(1));
     // Keep the snapshot alive by returning empty batches.
-#ifdef FIXWINDOWS
     return SnapshotBatch{.snapshotId = getId(), .hasMore = true};
-#else
-    return SnapshotBatch{};
-#endif
   }
 
   return _guardedData.doUnderLock([&](auto& data) -> ResultT<SnapshotBatch> {
@@ -320,11 +316,7 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
       LOG_CTX("ca1cb", DEBUG, loggerContext)
           << "No more shards to read from. Returning empty "
              "batch.";
-#ifdef FIXWINDOWS
-      return SnapshotBatch{.snapshotId = getId(), .hasMore = false};
-#else
-    return SnapshotBatch{};
-#endif
+     return SnapshotBatch{.snapshotId = getId(), .hasMore = false};
     }
 
     auto& [shard, reader] = data.shards.back();

@@ -28,7 +28,11 @@
 #include <thread>
 
 #include "Basics/operating-system.h"
-
+#ifndef _WIN32
+#include "Basics/threads-posix.h"
+#else
+#include "Basics/threads-win32.h"
+#endif
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -60,14 +64,23 @@ using namespace arangodb::basics;
 
 namespace {
 
+#ifndef _WIN32
 // ever-increasing counter for thread numbers.
 // not used on Windows
 std::atomic<uint64_t> NEXT_THREAD_ID(1);
+#endif
 
 // helper struct to assign and retrieve a thread id
 struct ThreadNumber {
   ThreadNumber() noexcept
-      : value(NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst)) {}
+      :
+#ifdef _WIN32
+        value(static_cast<uint64_t>(GetCurrentThreadId())) {
+  }
+#else
+        value(NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst)) {
+  }
+#endif
 
   uint64_t get() const noexcept { return value; }
 
@@ -80,6 +93,17 @@ struct ThreadNumber {
 /// @brief local thread number
 static thread_local ::ThreadNumber LOCAL_THREAD_NUMBER{};
 static thread_local char const* LOCAL_THREAD_NAME = nullptr;
+
+ThreadNameFetcher::ThreadNameFetcher(TRI_tid_t id) noexcept {
+  #ifndef _WIN32
+  pthread_getname_np(id, _buffer, 32);
+  #else
+  // on Windows, we cannot retrieve the thread name by id, so we just use the
+  // --FIXWINDOWS-- local thread name
+  // use irs::get_thread_name from thread_utils.cpp
+  memset(&_buffer[0], 0, sizeof(_buffer));
+  #endif
+}
 
 // retrieve the current thread's name. the string view will
 // remain valid as long as the ThreadNameFetcher remains valid.
@@ -148,7 +172,29 @@ void Thread::startThread(void* arg) {
 }
 
 /// @brief returns the process id
-TRI_pid_t Thread::currentProcessId() { return getpid(); }
+TRI_pid_t Thread::currentProcessId() {
+#ifdef _WIN32
+  return _getpid();
+#else
+  return getpid();
+#endif
+}
+
+/// @brief returns the kernel thread id
+// Note: On Windows, this is the same as the thread id. TODO: AR: Varma
+#ifndef _WIN32
+#ifdef HAVE_SYS_GETTID
+TRI_pid_t Thread::currentKernelThreadId() { return gettid(); }
+#else
+#include <sys/syscall.h>
+TRI_pid_t Thread::currentKernelThreadId() { return syscall(SYS_gettid); }
+#endif
+#else
+TRI_pid_t Thread::currentKernelThreadId() {
+  // On Windows, we return the thread id, which is the same as the kernel thread id
+  return currentThreadId();
+}
+#endif
 
 /// @brief returns the thread process id
 uint64_t Thread::currentThreadNumber() noexcept {
@@ -157,10 +203,14 @@ uint64_t Thread::currentThreadNumber() noexcept {
 
 /// @brief returns the thread id
 TRI_tid_t Thread::currentThreadId() {
+#ifdef TRI_HAVE_WIN32_THREADS
+  return GetCurrentThreadId();
+#else
 #ifdef TRI_HAVE_POSIX_THREADS
   return pthread_self();
 #else
 #error "Thread::currentThreadId not implemented"
+#endif
 #endif
 }
 

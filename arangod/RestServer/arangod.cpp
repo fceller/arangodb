@@ -26,6 +26,9 @@
 #include <string_view>
 #include <type_traits>
 #include "RestServer/DatabaseFeature.h"
+#ifdef _WIN32
+#include <iostream>
+#endif
 
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
@@ -47,6 +50,9 @@ constexpr auto kNonServerFeatures =
 #endif
                ArangodServer::id<GeneralServerFeature>(),
                ArangodServer::id<GreetingsFeature>(),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+               ArangodServer::id<ProcessEnvironmentFeature>(),
+#endif
                ArangodServer::id<HttpEndpointProvider>(),
                ArangodServer::id<LogBufferFeature>(),
                ArangodServer::id<ServerFeature>(),
@@ -94,6 +100,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::false_type{});
         },
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        [&name](auto& server, TypeTag<ProcessEnvironmentFeature>) {
+          return std::make_unique<ProcessEnvironmentFeature>(server, name);
+        },
+#endif
         [&ret](auto& server, TypeTag<CheckVersionFeature>) {
           return std::make_unique<CheckVersionFeature>(server, &ret,
                                                        kNonServerFeatures);
@@ -142,6 +153,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<ReplicationMetricsFeature>(
               server,
               server.template getFeature<arangodb::metrics::MetricsFeature>());
+        },
+        [](auto& server, TypeTag<VectorIndexFeature>) {
+          return std::make_unique<VectorIndexFeature>(server);
         },
         [](auto& server, TypeTag<RocksDBEngine>) {
           return std::make_unique<RocksDBEngine>(
@@ -228,6 +242,34 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   exit(EXIT_FAILURE);
 }
 
+#if _WIN32
+static int ARGC;
+static char** ARGV;
+
+static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
+  if (!TRI_InitWindowsEventLog()) {
+    return;
+  }
+  // register the service ctrl handler,  lpszArgv[0] contains service name
+  ServiceStatus =
+      RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
+
+  // set start pending
+  SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
+
+  TRI_GET_ARGV(ARGC, ARGV);
+  ArangoGlobalContext context(ARGC, ARGV, SBIN_DIRECTORY);
+  runServer(ARGC, ARGV, context);
+
+  // service has stopped
+  SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0, 0);
+  TRI_CloseWindowsEventlog();
+}
+
+#endif
+
+#ifdef __linux__
+
 // The following is a hack which is currently (September 2019) needed to
 // let our static executables compiled with libmusl and gcc 8.3.0 properly
 // detect that we are a multi-threaded application.
@@ -246,16 +288,35 @@ static void f() {
   static pthread_once_t once_control = PTHREAD_ONCE_INIT;
   pthread_once(&once_control, gg);
 }
+#endif
 
 int main(int argc, char* argv[]) {
+#ifdef __linux__
   // Do not delete this! See above for an explanation.
   if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) {
     f();
   }
-
+#endif
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
 
   TRI_GET_ARGV(argc, argv);
+#if _WIN32
+  if (argc > 1 && std::string_view(argv[1]) == "--start-service") {
+    ARGC = argc;
+    ARGV = argv;
+
+    SERVICE_TABLE_ENTRY ste[] = {
+        {TEXT(const_cast<char*>("")), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+        {nullptr, nullptr}};
+
+    if (!StartServiceCtrlDispatcher(ste)) {
+      std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
+                << GetLastError() << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    return 0;
+  }
+#endif
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
 
   arangodb::restartAction = nullptr;
@@ -278,6 +339,7 @@ int main(int argc, char* argv[]) {
               << ", giving up." << std::endl;
     return res;
   }
+#ifndef _WIN32
   // It is not clear if we want to do the following under Linux and OSX,
   // it is a clean way to restart from scratch with the same process ID,
   // so the process does not have to be terminated. On Windows, we have
@@ -292,4 +354,6 @@ int main(int argc, char* argv[]) {
     std::cerr << "WARNING: could not execvp ourselves, restore will not work!"
               << std::endl;
   }
+#endif
+
 }

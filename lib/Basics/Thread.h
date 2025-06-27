@@ -27,6 +27,11 @@
 #include <atomic>
 #include <string>
 #include <string_view>
+#ifndef _WIN32
+#include "Basics/threads-posix.h"
+#else
+#include "Basics/threads-win32.h"
+#endif 
 
 #include "Basics/threads.h"
 #include "Basics/DownCast.h"
@@ -42,6 +47,7 @@ struct ConditionVariable;
 class ThreadNameFetcher {
  public:
   ThreadNameFetcher() noexcept;
+  ThreadNameFetcher(TRI_tid_t id) noexcept;
   ThreadNameFetcher(ThreadNameFetcher const&) = delete;
   ThreadNameFetcher& operator=(ThreadNameFetcher const&) = delete;
 
@@ -94,6 +100,9 @@ class Thread {
 
   /// @brief returns the thread id
   static TRI_tid_t currentThreadId();
+
+  /// @brief returns the kernel thread id
+  static TRI_pid_t currentKernelThreadId();
 
  public:
   [[deprecated("server argument is no longer needed")]] Thread(

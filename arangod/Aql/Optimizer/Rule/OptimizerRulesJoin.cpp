@@ -748,6 +748,11 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
       if (opts.usedKeyFields.empty()) {
         LOG_JOIN_OPTIMIZER_RULE << "-> { EMPTY }";
       }
+      // only one key fields is supported currently
+      if (opts.usedKeyFields.size() != 1) {
+        return {false, {}};
+      }
+
       for (auto const& kk : opts.usedKeyFields) {
         LOG_JOIN_OPTIMIZER_RULE_OFFSETS << "-> {" << kk << "}";
       }
@@ -765,6 +770,11 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
                        [&](IndexNode* n) { return n->id() == candidateId; });
       TRI_ASSERT(nodeIter != candidates.end());
       auto node = *nodeIter;
+
+      // We can't have a join key on a stored value
+      if (opts.usedKeyFields[0] >= node->getIndexes()[0]->fields().size()) {
+        return {false, {}};
+      }
 
       if (node->projections().usesCoveringIndex()) {
         std::transform(node->projections().projections().begin(),
@@ -1045,9 +1055,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
               std::vector<std::unique_ptr<Expression>> constExpressions{};
               std::vector<size_t> computedUseKeyFields{};
               std::vector<size_t> computedConstantFields{};
-#ifdef FIXWINDOWS
               bool isUniqueStream = false;
-#endif
 
               if (indicesOffsets.contains(c->id())) {
                 auto const& idxOffset = indicesOffsets[c->id()];
@@ -1062,18 +1070,15 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                 }
 
                 computedUseKeyFields = std::move(idxOffset.getKeyFields());
-#ifdef FIXWINDOWS
                 computedConstantFields =
                     std::move(idxOffset.getConstantFields());
                 isUniqueStream = idxOffset.isUniqueStream;
-#endif
               } else {
                 // if no constants have been found, we'll stick to the
                 // defaults.
                 computedUseKeyFields = {0};
                 computedConstantFields = {};
               }
-#ifdef FIXWINDOWS
               auto info = JoinNode::IndexInfo{
                   .collection = c->collection(),
                   .outVariable = c->outVariable(),
@@ -1099,7 +1104,6 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
               indexInfos.emplace_back(std::move(info));
               handled.emplace(c);
-#endif
             }
             JoinNode* jn = plan->createNode<JoinNode>(
                 plan.get(), plan->nextId(), std::move(indexInfos),

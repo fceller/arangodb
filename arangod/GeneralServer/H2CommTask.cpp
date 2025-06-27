@@ -47,6 +47,11 @@
 
 #include <llhttp.h>
 
+// Work-around for nghttp2 non-standard definition ssize_t under windows
+// https://github.com/nghttp2/nghttp2/issues/616
+#if defined(_WIN32) // && defined(_MSC_VER)
+#define ssize_t long
+#endif
 #include <nghttp2/nghttp2.h>
 
 using namespace arangodb::basics;
@@ -736,7 +741,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   } catch (...) {
     retries = 0;
   }
-  if (--retries == 0) {
+  if (retries == 0) {
     LOG_TOPIC("924dc", WARN, Logger::REQUESTS)
         << "was not able to queue response this=" << (void*)this;
     // we are overloaded close stream
@@ -1046,6 +1051,8 @@ bool H2CommTask<T>::shouldStop() const {
 
 template class arangodb::rest::H2CommTask<SocketType::Tcp>;
 template class arangodb::rest::H2CommTask<SocketType::Ssl>;
+#ifndef _WIN32
 template class arangodb::rest::H2CommTask<SocketType::Unix>;
+#endif
 
 }  // namespace arangodb::rest

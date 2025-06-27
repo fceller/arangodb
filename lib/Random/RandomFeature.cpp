@@ -43,14 +43,19 @@ RandomFeature::RandomFeature(application_features::ApplicationServer& server,
 void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("random", "random generator");
 
+#ifdef _WIN32
+  std::unordered_set<uint32_t> generators = {1, 5};
+#else
   std::unordered_set<uint32_t> generators = {1, 2, 3, 4};
+#endif
 
   options
       ->addOption(
           "--random.generator",
           "The random number generator to use (1 = MERSENNE, 2 = RANDOM, "
-          "3 = URANDOM, 4 = COMBINED). The options 2, 3, and 4 are deprecated "
-          "and will be removed in a future version.",
+          "3 = URANDOM, 4 = COMBINED (not available on Windows), 5 = WinCrypt "
+          "(Windows only). The options 2, 3, 4, and 5 are deprecated and will "
+          "be removed in a future version.",
           new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator,
                                                        generators),
           arangodb::options::makeDefaultFlags(
@@ -61,7 +66,8 @@ implication of the Mersenne Twister MT19937 algorithm
 - `3`: use the non-blocking random (or pseudo-random) number generator supplied
   by the operating system
 - `4`: a combination of the blocking random number generator and the Mersenne
-  Twister)");
+  Twister (not available on Windows)
+- `5`: use WinCrypt (Windows only))");
 }
 
 void RandomFeature::prepare() {

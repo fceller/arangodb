@@ -159,7 +159,6 @@ std::ostream& operator<<(std::ostream& os, VarAttribKey const& attr) noexcept {
 
 std::optional<VarAttribKey> extractVariableAttributeAccess(
     AstNode const* node) {
-#ifdef FIXWINDOWS
   if (node->type == NODE_TYPE_REFERENCE) {
     auto* var = static_cast<Variable const*>(node->getData());
     return VarAttribKey{.var = var};
@@ -168,7 +167,6 @@ std::optional<VarAttribKey> extractVariableAttributeAccess(
     result->path.emplace_back(node->getStringValue(), node->getStringLength());
     return result;
   }
-#endif
   return std::nullopt;
 }
 

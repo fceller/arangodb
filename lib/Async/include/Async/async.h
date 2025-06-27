@@ -1,15 +1,15 @@
 #pragma once
 
-#include "Async/Registry/promise.h"
+#include "Async/context.h"
 #include "Async/coro-utils.h"
 #include "Async/expected.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
-#include "Utils/ExecContext.h"
+#include "Async/Registry/promise.h"
+#include "Async/Registry/registry_variable.h"
+#include "Inspection/Format.h"
 
 #include <coroutine>
 #include <atomic>
+#include <future>
 #include <stdexcept>
 #include <utility>
 #include <source_location>
@@ -26,11 +26,12 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
   using promise_type = async_promise<T>;
 
   async_promise_base(std::source_location loc)
-      : async_registry::AddToAsyncRegistry{std::move(loc)} {}
+      : async_registry::AddToAsyncRegistry{std::move(loc)}, _context{} {
+    *async_registry::get_current_coroutine() = {id()};
+  }
 
   std::suspend_never initial_suspend() noexcept {
-    promise_in_registry->state.store(async_registry::State::Running);
-    _callerExecContext = ExecContext::currentAsShared();
+    update_state(async_registry::State::Running);
     return {};
   }
   auto final_suspend() noexcept {
@@ -38,6 +39,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
       bool await_ready() noexcept { return false; }
       std::coroutine_handle<> await_suspend(
           std::coroutine_handle<> self) noexcept {
+        _promise->_context.set();
         auto addr = _promise->_continuation.exchange(self.address(),
                                                      std::memory_order_acq_rel);
         if (addr == nullptr) {
@@ -52,7 +54,6 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
       void await_resume() noexcept {}
       async_promise_base* _promise;
     };
-    ExecContext::set(_callerExecContext);
     return awaitable{this};
   }
   template<typename U>
@@ -65,36 +66,39 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
     struct awaitable {
       bool await_ready() { return inner_awaitable.await_ready(); }
       auto await_suspend(std::coroutine_handle<> handle) {
-        outer_promise->promise_in_registry->state.store(
-            async_registry::State::Suspended);
-        ExecContext::set(outer_promise->_callerExecContext);
+        outer_promise->update_state(async_registry::State::Suspended);
+        outer_promise->_context.set();
         return inner_awaitable.await_suspend(handle);
       }
       auto await_resume() {
-        auto old_state = outer_promise->promise_in_registry->state.exchange(
-            async_registry::State::Running);
-        if (old_state == async_registry::State::Suspended) {
-          outer_promise->_callerExecContext = ExecContext::currentAsShared();
+        auto old_state =
+            outer_promise->update_state(async_registry::State::Running);
+        if (old_state.value() == async_registry::State::Suspended) {
+          outer_promise->_context = Context{};
         }
-        ExecContext::set(_myExecContext);
+        myContext.set();
         return inner_awaitable.await_resume();
       }
       async_promise_base<T>* outer_promise;
       inner_awaitable_type inner_awaitable;
-      std::shared_ptr<ExecContext const> _myExecContext;
+      Context myContext;
     };
 
     // update promises in registry
-    if constexpr (CanSetPromiseWaiter<U>) {
-      co_awaited_expression.set_promise_waiter(this->id());
+    if constexpr (CanUpdateRequester<U>) {
+      co_awaited_expression.update_requester({this->id()});
     }
     update_source_location(loc);
 
-    return awaitable{
-        this, get_awaitable_object(std::forward<U>(co_awaited_expression)),
-        ExecContext::currentAsShared()};
+    return awaitable{.outer_promise = this,
+                     .inner_awaitable = get_awaitable_object(
+                         std::forward<U>(co_awaited_expression)),
+                     .myContext = Context{}};
   }
-  void unhandled_exception() { _value.set_exception(std::current_exception()); }
+  void unhandled_exception() {
+    _value.set_exception(std::current_exception());
+    _context.set();
+  }
   auto get_return_object() {
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
@@ -102,7 +106,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
 
   std::atomic<void*> _continuation = nullptr;
   expected<T> _value;
-  std::shared_ptr<ExecContext const> _callerExecContext;
+  Context _context;
 };
 
 template<typename T>
@@ -132,7 +136,7 @@ struct async_promise<void> : async_promise_base<void> {
 };
 
 template<typename T>
-struct async {
+struct [[nodiscard]] async {
   using promise_type = async_promise<T>;
 
   auto operator co_await() && {
@@ -167,7 +171,7 @@ struct async {
     if (_handle) {
       auto& promise = _handle.promise();
       if (promise._continuation.exchange(
-              _handle.address(), std::memory_order_release) != nullptr) {
+              _handle.address(), std::memory_order_acq_rel) != nullptr) {
         _handle.destroy();
       }
       _handle = nullptr;
@@ -177,10 +181,10 @@ struct async {
   bool valid() const noexcept { return _handle != nullptr; }
   operator bool() const noexcept { return valid(); }
 
-  auto set_promise_waiter(void* waiter) {
-    _handle.promise().set_promise_waiter(waiter);
+  auto update_requester(async_registry::Requester waiter) {
+    _handle.promise().update_requester(waiter);
   }
-  auto id() -> void* { return _handle.promise()->id(); }
+  auto id() -> void* { return _handle.promise().id(); }
 
   ~async() { reset(); }
 

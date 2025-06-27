@@ -37,7 +37,8 @@ namespace aragndob::velocypack {
 class Builder;
 }
 
-namespace arangodb::options {
+namespace arangodb {
+namespace options { 
 struct Option;
 struct Parameter;
 
@@ -294,5 +295,6 @@ class ProgramOptions {
   // directory of this binary
   char const* _binaryPath;
 };
+}  // namespace options
 
-}  // namespace arangodb::options
+}  // namespace arangodb

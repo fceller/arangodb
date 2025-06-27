@@ -23,6 +23,11 @@
 
 #include "EnvironmentFeature.h"
 
+// --- FixWINDOWS
+// TODO: CR: Varma:  Must check the implementation and provide windows equivalent
+// many unix related paths in this file
+
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
@@ -46,8 +51,39 @@
 #include <string_view>
 #include <vector>
 
+// --- FixWINDOWS
+#ifdef _WIN32
+
+#include <windows.h>
+#include <tlhelp32.h>
+#include <iostream>
+
+DWORD getParentProcessId(DWORD pid = GetCurrentProcessId()) {
+  HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (hSnapshot == INVALID_HANDLE_VALUE) {
+    return 0;
+  }
+
+  PROCESSENTRY32 pe;
+  pe.dwSize = sizeof(PROCESSENTRY32);
+
+  if (Process32First(hSnapshot, &pe)) {
+    do {
+      if (pe.th32ProcessID == pid) {
+        CloseHandle(hSnapshot);
+        return pe.th32ParentProcessID;
+      }
+    } while (Process32Next(hSnapshot, &pe));
+  }
+
+  CloseHandle(hSnapshot);
+  return 0;
+}
+#else
 #include <sys/sysinfo.h>
 #include <unistd.h>
+#endif
+
 
 #include <absl/strings/str_cat.h>
 
@@ -100,6 +136,7 @@ EnvironmentFeature::EnvironmentFeature(Server& server)
 }
 
 void EnvironmentFeature::prepare() {
+  #ifdef __linux__
   _operatingSystem = "linux";
   try {
     std::string const versionFilename("/proc/version");
@@ -111,12 +148,27 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // ignore any errors as the log output is just informational
   }
+#elif _WIN32
+  // TODO: improve Windows version detection
+  _operatingSystem = "windows";
+#elif __APPLE__
+  // TODO: improve MacOS version detection
+  _operatingSystem = "macos";
+#else
+  _operatingSystem = "unknown";
+#endif
 
   // find parent process id and name
   std::string parent;
   try {
-    pid_t parentId = getppid();
-    if (parentId) {
+
+  #ifdef _WIN32
+    TRI_pid_t parentId = getParentProcessId();
+  #else
+    TRI_pid_t parentId = getppid();
+  #endif
+
+   if (parentId) {
       parent = absl::StrCat(", parent process: ", parentId);
       std::string const procFilename =
           absl::StrCat("/proc/", parentId, "/stat");
@@ -308,12 +360,25 @@ void EnvironmentFeature::prepare() {
         //  When overcommit_memory is set to 2, the committed address
         //  space is not permitted to exceed swap plus this percentage
         //  of physical RAM.
-
+// --- FIXWINDOWS
+        double ram = 0;
+        double swapSpace = 0;
+#ifndef _WIN32
         struct sysinfo info;
         int res = sysinfo(&info);
-        double ram = static_cast<double>(PhysicalMemory::getValue());
+        ram = static_cast<double>(PhysicalMemory::getValue());
         if (res == 0 && ram > 0) {
-          double swapSpace = static_cast<double>(info.totalswap);
+          swapSpace = static_cast<double>(info.totalswap);
+#else
+        MEMORYSTATUSEX memInfo;
+        memInfo.dwLength = sizeof(memInfo);
+        BOOL res = GlobalMemoryStatusEx(&memInfo);
+        ram =  memInfo.ullTotalPhys;
+        if (res && ram > 0) {
+          swapSpace = static_cast<double>(memInfo.ullTotalPageFile - memInfo.ullTotalPhys);
+#endif
+
+
           double rr =
               (ram >= swapSpace) ? 100.0 * ((ram - swapSpace) / ram) : 0.0;
           if (static_cast<double>(r) < 0.99 * rr) {
@@ -544,7 +609,7 @@ void EnvironmentFeature::prepare() {
             << "host ASLR is in use for " << s;
       }
     }
-  } catch (...) {
+  } catch(...) {
     // file not found or value not convertible into integer
   }
 }

@@ -97,6 +97,16 @@ list(APPEND V8_GYP_ARGS
 )
 
 option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
+if(NOT DEFINED USE_DEBUG_V8)
+  if(USE_DEBUG_V8 OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(USE_DEBUG_V8 ON CACHE BOOL "Enable V8 Debug mode" FORCE)
+  else()
+    set(USE_DEBUG_V8 OFF CACHE BOOL "Enable V8 Debug mode" FORCE)
+  endif()
+endif()
+
+
+
   
 set(GYP_MAIN ${PROJECT_SOURCE_DIR}/gyp/gyp_main.py)
 
@@ -214,7 +224,20 @@ if (WIN32)
     "${PROJECT_NAME}: Libraries"
   )
 
+  if(CMAKE_CONFIGURATION_TYPES)
+    set(ACTIVE_CONFIG "${CMAKE_CFG_INTDIR}")  # For MSVC or Xcode
+  else()
+    set(ACTIVE_CONFIG "${CMAKE_BUILD_TYPE}")  # For Ninja, Unix Makefiles
+  endif()
+
+
   foreach (MS_TARGET_CONF ${V8_TARGET_ARCHS})
+    # MS_TARGET_CONF is the configuration name, e.g. "Debug" or "Release"
+    # Build only the active configuration
+    if(NOT "${MS_TARGET_CONF}" STREQUAL "${ACTIVE_CONFIG}")
+      continue()
+    endif()
+
     string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
     ExternalProject_Add(v8_build_${MS_TARGET_CONF_LOWER}
       BUILD_IN_SOURCE

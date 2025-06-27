@@ -112,7 +112,9 @@ void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
         << "reached heap-size limit of context #" << v8g->_id
         << " interrupting V8 execution ("
         << "heap size limit " << heapSizeLimit << ", used " << usedHeapSize
-        << ") during " << whereFreed;
+        << ") during " << whereFreed << "stillFree " << stillFree
+        << " LIMIT_ABS " << LIMIT_ABS << " freed " << freed << " minFreed "
+        << minFreed;
 
     isolate->TerminateExecution();
     V8PlatformFeature::setOutOfMemory(isolate);
@@ -344,7 +346,11 @@ std::string V8PlatformFeature::determineICUDataPath() {
       std::string icu_path = path.substr(0, path.length() - fn.length());
       FileUtils::makePathAbsolute(icu_path);
       FileUtils::normalizePath(icu_path);
+  #ifdef _WIN32
+      SetEnvironmentVariableA("ICU_DATA", icu_path.c_str());
+  #else
       setenv("ICU_DATA", icu_path.c_str(), 1);
+  #endif
     }
   }
 

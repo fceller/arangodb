@@ -34,7 +34,9 @@
 #include <WinSock2.h>
 #endif
 
+#if defined(__APPLE__) || defined(__linux__) 
 #include <fcntl.h>
+#endif
 #include <openssl/opensslv.h>
 #include <openssl/ssl.h>
 #ifndef OPENSSL_VERSION_NUMBER
@@ -61,7 +63,15 @@
 
 #undef TRACE_SSL_CONNECTIONS
 
+#ifdef _WIN32
+#define STR_ERROR()                                                  \
+  windowsErrorBuf;                                                   \
+  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0, \
+                windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
+  errno = GetLastError();
+#else
 #define STR_ERROR() strerror(errno)
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -495,6 +505,9 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
                                                 size_t* bytesWritten) {
   TRI_ASSERT(bytesWritten != nullptr);
 
+#ifdef _WIN32
+  char windowsErrorBuf[256];
+#endif
   *bytesWritten = 0;
 
   if (_ssl == nullptr) {
@@ -553,6 +566,10 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
 
 bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
                                                bool& connectionClosed) {
+#ifdef _WIN32
+  char windowsErrorBuf[256];
+#endif
+
   connectionClosed = true;
   if (_ssl == nullptr) {
     return false;
@@ -643,27 +660,53 @@ bool SslClientConnection::readable() {
 }
 
 bool SslClientConnection::setSocketToNonBlocking() {
-  _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
-  if (_socketFlags == -1) {
-    _errorDetails = "Socket file descriptor read returned with error " +
-                    std::to_string(errno);
-    return false;
-  }
-  if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags | O_NONBLOCK) == -1) {
-    _errorDetails = "Attempt to create non-blocking socket generated error " +
-                    std::to_string(errno);
-    return false;
-  }
+  #if defined(__APPLE__) || defined(__linux__)
+    _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
+    if (_socketFlags == -1) {
+      _errorDetails = "Socket file descriptor read returned with error " +
+                      std::to_string(errno);
+      return false;
+    }
+    if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags | O_NONBLOCK) == -1) {
+      _errorDetails = "Attempt to create non-blocking socket generated error " +
+                      std::to_string(errno);
+      return false;
+    }
+  #else
+    u_long nonBlocking = 1;
+    if (ioctlsocket(_socket.fileDescriptor, FIONBIO, &nonBlocking) != 0) {
+      _errorDetails = "Attempt to create non-blocking socket generated error " +
+                      std::to_string(WSAGetLastError());
+      return false;
+    }
+  #endif
   return true;
 }
 
 bool SslClientConnection::cleanUpSocketFlags() {
   TRI_ASSERT(_isSocketNonBlocking);
+#if defined(__linux__) || defined(__APPLE__)
   if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags & ~O_NONBLOCK) ==
       -1) {
     _errorDetails = "Attempt to make socket blocking generated error " +
                     std::to_string(errno);
     return false;
   }
+#else
+  u_long nonBlocking = 0;
+  if (ioctlsocket(_socket.fileDescriptor, FIONBIO, &nonBlocking) != 0) {
+    _errorDetails = "Attempt to make socket blocking generated error " +
+                    std::to_string(WSAGetLastError());
+    return false;
+  }
+#endif
   return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the connection is still OK
+//////////////////////////////////////////////////////////////////////////////
+
+bool SslClientConnection::test_idle_connection() {
+  return TRI_socket_test_idle_connection(_socket);
 }

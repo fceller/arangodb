@@ -30,7 +30,7 @@
 namespace arangodb::terminal_utils {
 
 /// @brief returns the terminal size
-TerminalSize defaultTerminalSize() {
+TRI_TerminalSize TRI_DefaultTerminalSize() {
   TerminalSize result;
 
   unsigned short values[4];

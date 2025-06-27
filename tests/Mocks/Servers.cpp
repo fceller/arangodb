@@ -53,6 +53,7 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "RestServer/VectorIndexFeature.h"
 #ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
 #endif
@@ -166,6 +167,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<SystemDatabaseFeature>(true);
   server.addFeature<InitDatabaseFeature>(true, std::vector<size_t>{});
   server.addFeature<ViewTypesFeature>(false);  // true ??
+  server.addFeature<VectorIndexFeature>(true);
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
@@ -504,10 +506,11 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
   std::vector<uint64_t> toCall;
   std::unordered_set<std::string> pc, cc;
   std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> res;
+  consensus::index_t commitIndex;
 
   {
     std::lock_guard g(_storeLock);
-    ++_commitIndex;
+    commitIndex = ++_commitIndex;
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
         _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}),
         _commitIndex};  // apply logs
@@ -525,7 +528,7 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
     }
   }
 
-  triggerWaiting(_commitIndex);
+  triggerWaiting(commitIndex);
   invokeCallbacks(toCall);
   return res;
 }

@@ -27,6 +27,7 @@ if(MSVC)
 else()
   # copy source files into build directory (icu has in source build system)
   file(COPY "${ICU64_SOURCE_DIR}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+# generate external project
 
   set(ICU64_LIBS
       "${CMAKE_CURRENT_BINARY_DIR}/lib/libicui18n64.a"
@@ -88,3 +89,17 @@ else()
   set(ICU64_LIBRARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/lib" PARENT_SCOPE)
   set(ICU64_LIBS "${ICU64_LIBS}" PARENT_SCOPE)
 endif()
+
+set(ICU_DT_LEGACY "${CMAKE_CURRENT_SOURCE_DIR}/icudtl_legacy.dat")
+set(ICU_DT_LEGACY ${ICU_DT_LEGACY} PARENT_SCOPE)
+set(ICU_DT_LEGACY_DEST "icudtl_legacy.dat" )
+set(ICU_DT_LEGACY_DEST ${ICU_DT_LEGACY_DEST} PARENT_SCOPE)
+
+add_custom_command(
+    TARGET iculegacy_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT_LEGACY} ${CMAKE_BINARY_DIR}/bin/${ICU_DT_LEGACY_DEST})
+
+add_custom_command(
+    TARGET iculegacy_build POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${ICU_DT_LEGACY} ${CMAKE_BINARY_DIR}/tests/${ICU_DT_LEGACY_DEST})
+

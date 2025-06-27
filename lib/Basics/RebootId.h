@@ -88,10 +88,10 @@ auto inspect(Inspector& f, RebootId& x) {
   }
 }
 
-std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
+std::ostream& operator<<(std::ostream& o, RebootId const& r);
 
 template<>
-struct velocypack::Extractor<arangodb::RebootId> {
+struct velocypack::Extractor<RebootId> {
   static auto extract(velocypack::Slice slice) -> RebootId {
     return RebootId{slice.getNumericValue<std::size_t>()};
   }

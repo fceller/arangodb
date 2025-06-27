@@ -24,6 +24,10 @@
 #pragma once
 
 #include <string_view>
+#ifdef _WIN32
+#include <string>
+#endif
+
 
 namespace arangodb {
 class CrashHandler {
@@ -54,6 +58,10 @@ class CrashHandler {
 
   /// @brief installs the crash handler globally
   static void installCrashHandler();
+
+#ifdef _WIN32
+  static void setMiniDumpDirectory(std::string path);
+#endif
 };
 
 }  // namespace arangodb

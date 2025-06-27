@@ -54,6 +54,10 @@
 #include <velocypack/Sink.h>
 #include <mutex>
 
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
+
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif

@@ -12,7 +12,7 @@ endif()
 # Global macros ----------------------------------------------------------------
 # installs a config file -------------------------------------------------------
 macro (install_config name)
-  if (DARWIN AND NOT HOMEBREW)
+  if (MSVC OR (DARWIN AND NOT HOMEBREW))
     set(PKGDATADIR "@ROOTDIR@/${CMAKE_INSTALL_DATAROOTDIR_ARANGO}")
     if (DARWIN)
       # var will be redirected to ~ for the macos bundle
@@ -33,9 +33,15 @@ macro (install_config name)
     set(DEFINEUID "# ")
   endif ()
   
-  set(CRLFSTYLE "UNIX")
-  set(COMMENT_LOGFILE "")
-  set(PROGRAM_SUFFIX "")
+  if (MSVC)
+    set(PROGRAM_SUFFIX ".exe")
+    set(CRLFSTYLE "CRLF")
+    set(COMMENT_LOGFILE "# ")
+  else()
+    set(CRLFSTYLE "UNIX")
+    set(COMMENT_LOGFILE "")
+    set(PROGRAM_SUFFIX "")
+  endif ()
 
   configure_file(
     "${PROJECT_SOURCE_DIR}/etc/arangodb3/${name}.conf.in"
@@ -55,12 +61,19 @@ endmacro ()
 # installs a readme file converting EOL ----------------------------------------
 macro (install_readme input output)
   set(where "${CMAKE_INSTALL_DOCDIR}")
+  if (MSVC)
+    # the windows installer contains the readme in the top level directory:
+    set(where ".")
+  endif ()
 
   set(PKG_VERSION "")
   if (${USE_VERSION_IN_LICENSEDIR})
     set(PKG_VERSION "-${ARANGODB_VERSION}")
   endif ()
   set(CRLFSTYLE "UNIX")
+  if (MSVC)
+    set(CRLFSTYLE "CRLF")
+  endif ()
 
   install(
     CODE "configure_file(${PROJECT_SOURCE_DIR}/${input} \"${PROJECT_BINARY_DIR}/${output}\" NEWLINE_STYLE ${CRLFSTYLE})")
@@ -73,29 +86,55 @@ endmacro ()
 # installs a link to an executable ---------------------------------------------
 if (INSTALL_MACROS_NO_TARGET_INSTALL)
   macro (install_command_alias name where alias)
-    add_custom_command(
-      OUTPUT ${alias}
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E create_symlink ${name}
-      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}) 
-    install(
-      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}
-      DESTINATION ${where})
+    if (MSVC)
+      add_custom_command(
+        OUTPUT ${alias}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
+      install(
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
+        DESTINATION ${where})
+    else ()
+      add_custom_command(
+        OUTPUT ${alias}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${name}
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}) 
+      install(
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}
+        DESTINATION ${where})
+    endif ()
   endmacro ()
 else ()
   macro (install_command_alias name where alias)
-    add_custom_command(
-      TARGET ${name}
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E create_symlink ${name}
-      ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}) 
-    install(
-      PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}
-      DESTINATION ${where})
+    if (MSVC)
+      add_custom_command(
+        TARGET ${name}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
+      install(
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX}
+        DESTINATION ${where})
+    else ()
+      add_custom_command(
+        TARGET ${name}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${name}
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}) 
+      install(
+        PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}
+        DESTINATION ${where})
+    endif ()
   endmacro ()
 endif()
 
 macro(to_native_path sourceVarName)
-  string(REGEX REPLACE "//*" "/" "myVar" "${${sourceVarName}}" )
+  if (MSVC)
+    string(REGEX REPLACE "/" "\\\\\\\\" "myVar" "${${sourceVarName}}" )
+  else()
+    string(REGEX REPLACE "//*" "/" "myVar" "${${sourceVarName}}" )
+  endif()
   set("INC_${sourceVarName}" ${myVar})
 endmacro()

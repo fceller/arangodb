@@ -35,6 +35,7 @@
 
 namespace arangodb::signals {
 
+#ifndef _WIN32
 /// @brief find out what impact a signal will have to the process we send it.
 SignalType signalType(int signal) noexcept {
   // Some platforms don't have these. To keep our table clean
@@ -119,9 +120,11 @@ SignalType signalType(int signal) noexcept {
       return SignalType::user;
   }
 }
+#endif
 
 /// @brief whether or not the signal is deadly
 bool isDeadly(int signal) noexcept {
+#ifndef _WIN32
   switch (signalType(signal)) {
     case SignalType::term:
       return true;
@@ -138,6 +141,7 @@ bool isDeadly(int signal) noexcept {
     case SignalType::user:  // user signals aren't supposed to be deadly.
       return false;
   }
+#endif
   // well windows... always deadly.
   return true;
 }
@@ -210,6 +214,7 @@ std::string_view name(int signal) noexcept {
 }
 
 std::string_view subtypeName(int signal, int subCode) noexcept {
+#ifndef _WIN32
   // the following meanings are taken from /usr/include/asm-generic/siginfo.h
   switch (signal) {
     case SIGILL: {
@@ -405,6 +410,7 @@ std::string_view subtypeName(int signal, int subCode) noexcept {
     default:
       break;
   }
+#endif
   return "unknown";
 }
 
