@@ -611,11 +611,6 @@ if (MSVC)  #TODO: MDVarma  CR: check if needed
   # Increase the reserved stack size for all threads to 4MB
   # Note: this is only _reserved_ memory, not necessarily _committed_ memory
   set(BASE_LD_FLAGS  "${BASE_LD_FLAGS} /STACK:4194304")
-  if (MSVC_VERSION VERSION_GREATER_EQUAL 1930)
-    # see https://docs.microsoft.com/en-us/cpp/overview/cpp-conformance-improvements?view=msvc-170#error-on-a-non-dependent-static_assert
-    set(BASE_C_FLAGS "/Zc:static_assert- ${BASE_C_FLAGS}")
-    set(BASE_CXX_FLAGS "/Zc:static_assert- ${BASE_CXX_FLAGS}")
-  endif()
 endif ()
 
 # FIXME: refactor/cleanup check below
@@ -1138,7 +1133,11 @@ endif()
 set(CMAKE_C_FLAGS                  ""                                                CACHE INTERNAL "default C compiler flags")
 set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -D_DEBUG=1"                   CACHE INTERNAL "C debug flags")
 set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
-set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
+if(MSVC)
+  set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS}"   CACHE INTERNAL "C release flags")
+else()
+  set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
+endif()
 set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
 
 # cxx
@@ -1149,7 +1148,11 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-point
 set(CMAKE_CXX_FLAGS                ""                                                CACHE INTERNAL "default C++ compiler flags")
 set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -D_DEBUG=1"                   CACHE INTERNAL "C++ debug flags")
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
-set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
+if(MSVC)
+  set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS}"   CACHE INTERNAL "C++ release flags")
+else()
+  set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
+endif()
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
 
 
