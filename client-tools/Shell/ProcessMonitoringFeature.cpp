@@ -146,7 +146,7 @@ void ProcessMonitorThread::run() {  // override
   }
 }
 
-std::optional<ExternalProcessStatus> getHistoricStatus(
+std::optional<ExternalProcessStatus> real_getHistoricStatus(
     TRI_pid_t pid, application_features::ApplicationServer& server) {
   return static_cast<ArangoshServer&>(server)
       .getFeature<ProcessMonitoringFeature>()

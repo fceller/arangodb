@@ -1572,25 +1572,12 @@ if (UNIX)
 endif ()
 
 if (NOT USE_PRECOMPILED_V8)
-
-
   # all binaries depend on v8_build because it contains ICU as well
-add_dependencies(${BIN_ARANGOBENCH}   v8_build)
-if (USE_ENTERPRISE)
-  add_dependencies(${BIN_ARANGOBACKUP}  v8_build)
-endif ()
-add_dependencies(${BIN_ARANGOD}       v8_build)
-add_dependencies(${BIN_ARANGODUMP}    v8_build)
-add_dependencies(${BIN_ARANGOEXPORT}  v8_build)
-add_dependencies(${BIN_ARANGOIMPORT}  v8_build)
-add_dependencies(${BIN_ARANGORESTORE} v8_build)
-if (USE_V8)
-add_dependencies(${BIN_ARANGOSH}      v8_build)
-endif ()
+
 if (USE_GOOGLE_TESTS)
   add_dependencies(${BIN_ARANGODB_TESTS} v8_build)
 endif ()
-endif ()
+endif()
 
  
 add_custom_target(packages
