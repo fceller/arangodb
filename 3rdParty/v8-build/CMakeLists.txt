@@ -159,10 +159,11 @@ if (WIN32)
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS ../gypfiles/v8.gyp)
 
-  list(APPEND V8_TARGET_ARCHS "Release")
-  
+  set(DEFAULT_CONFIG "Release")
+  list(APPEND V8_TARGET_ARCHS "${DEFAULT_CONFIG}")
   if (USE_DEBUG_V8)
     list(APPEND V8_TARGET_ARCHS "Debug")
+    set(DEFAULT_CONFIG "Debug")
   endif()
   
   set(GYP_GENERATORS "msvs")
@@ -217,33 +218,59 @@ if (WIN32)
 
   list(APPEND V8_TARGETS v8_libbase v8_libplatform v8_snapshot)
 
-  add_custom_target(v8_build)
   set(V8_LIBS
     "torque_base;v8_base_without_compiler;v8_compiler;v8_init;v8_initializers;v8_turboshaft;v8_libbase;v8_libplatform;v8_snapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
 
-  if(CMAKE_CONFIGURATION_TYPES)
-    set(ACTIVE_CONFIG "${CMAKE_CFG_INTDIR}")  # For MSVC or Xcode
-  else()
-    set(ACTIVE_CONFIG "${CMAKE_BUILD_TYPE}")  # For Ninja, Unix Makefiles
-  endif()
+
+  function(detect_active_config ACTIVE_CONFIG_OUT)
+    # User override takes priority
+    if(DEFINED ACTIVE_CONFIG)
+      set(_cfg "${ACTIVE_CONFIG}")
+      message(STATUS "Using externally provided ACTIVE_CONFIG = ${_cfg}")
+    
+    # Visual Studio or Xcode multi-config
+    elseif(CMAKE_CONFIGURATION_TYPES)
+      if(DEFINED CMAKE_BUILD_TYPE)
+        set(_cfg "${CMAKE_BUILD_TYPE}")
+        message(WARNING "CMAKE_BUILD_TYPE is ignored in multi-config generators, using default Debug")
+      endif()
+      # You can choose default config here or fail
+      set(_cfg "${DEFAULT_CONFIG}")
+      message(STATUS "Multi-config generator detected, defaulting ACTIVE_CONFIG = ${_cfg}")
+
+    # Single-config generators like Ninja/Makefiles
+    elseif(DEFINED CMAKE_BUILD_TYPE)
+      set(_cfg "${CMAKE_BUILD_TYPE}")
+      message(STATUS "Single-config generator detected, using ACTIVE_CONFIG = ${_cfg}")
+
+    else()
+      message(FATAL_ERROR "Cannot detect ACTIVE_CONFIG; please define -DCMAKE_BUILD_TYPE or -DACTIVE_CONFIG")
+    endif()
+
+    # Set output variable
+    set(${ACTIVE_CONFIG_OUT} "${_cfg}" PARENT_SCOPE)
+  endfunction()
+  detect_active_config(ACTIVE_CONFIG)
 
 
   foreach (MS_TARGET_CONF ${V8_TARGET_ARCHS})
     # MS_TARGET_CONF is the configuration name, e.g. "Debug" or "Release"
     # Build only the active configuration
     if(NOT "${MS_TARGET_CONF}" STREQUAL "${ACTIVE_CONFIG}")
+      message(STATUS "Skipping configuration ${MS_TARGET_CONF} as it is not the active configuration (${ACTIVE_CONFIG})")
       continue()
     endif()
+    message(STATUS "Building configuration ${MS_TARGET_CONF} as it is  the active configuration (${ACTIVE_CONFIG})")
 
     string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
     ExternalProject_Add(v8_build_${MS_TARGET_CONF_LOWER}
-      BUILD_IN_SOURCE
+       BUILD_IN_SOURCE
         TRUE
       WORKING_DIRECTORY
-        ${V8_DIR}/gypfiles
+        "${GYP_FILES_DIR}"
       SOURCE_DIR
         "${V8_DIR}"
       CONFIGURE_COMMAND
@@ -253,14 +280,12 @@ if (WIN32)
       INSTALL_COMMAND
         ""
     )
-
-    add_dependencies(v8_build v8_build_${MS_TARGET_CONF_LOWER})
-
+ 
     foreach (V8_ONE_TARGET ${V8_TARGETS})
       # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
       ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_${V8_ONE_TARGET}_${MS_TARGET_CONF_LOWER}
         WORKING_DIRECTORY
-          ${V8_TARGET_DIR}/../gypfiles
+          "${V8_TARGET_DIR}/../gypfiles"
         COMMAND
           msbuild ${V8_ONE_TARGET}.vcxproj /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
         DEPENDEES
@@ -269,7 +294,11 @@ if (WIN32)
           build
       )
     endforeach ()
+
+    add_custom_target(v8_build ALL DEPENDS v8_build_${MS_TARGET_CONF_LOWER})
+    add_dependencies(v8_build v8_build_${MS_TARGET_CONF_LOWER})
   endforeach ()
+
 
   set(ICU_LIBRARY_DEBUG   "${CMAKE_CURRENT_BINARY_DIR}/${V8_SUB_DIR}/third_party/icu/Debug")
   set(ICU_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/${V8_SUB_DIR}/third_party/icu/Release")
@@ -339,9 +368,6 @@ if (WIN32)
     CACHE INTERNAL
     "${PROJECT_NAME}: V8 private include path"
   )
-
-  set(V8_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/gypfiles/Debug")
-  set(V8_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/gypfiles//Release")
 
 else ()
 
