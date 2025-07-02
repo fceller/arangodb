@@ -68,6 +68,7 @@ target_link_libraries(${BIN_ARANGOSH}
   arango_shell
   arangoimport_utils
   clienttools_utils
+  arango_v8_no_deadline
 )
   
   # use ICU 64 for the client tools

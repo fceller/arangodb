@@ -28,6 +28,16 @@
 
 #include "Basics/Result.h"
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#define isatty _isatty
+#define STDIN_FILENO 0
+
+#endif // _WIN32
+
 // .............................................................................
 // Called before anything else starts - initializes whatever is required to be
 // initialized.

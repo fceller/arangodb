@@ -217,3 +217,17 @@ char ZLIB_INTERNAL *gz_strwinerror OF((DWORD error));
 unsigned ZLIB_INTERNAL gz_intmax OF((void));
 #  define GT_OFF(x) (sizeof(int) == sizeof(z_off64_t) && (x) > gz_intmax())
 #endif
+
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#define isatty _isatty
+#define write _write
+#define open _open
+#define close _close
+#define read _read
+#define STDIN_FILENO 0
+
+#endif // _WIN32

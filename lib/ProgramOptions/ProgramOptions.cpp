@@ -40,6 +40,16 @@
 #include <unistd.h>
 #endif
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#define isatty _isatty
+#define STDIN_FILENO 0
+
+#endif // _WIN32
+
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
 using namespace arangodb::options;

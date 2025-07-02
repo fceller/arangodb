@@ -692,6 +692,12 @@ if (MSVC)
   # bcrypt is needed for SSL
   set(MSVC_LIBS Shlwapi.lib;crypt32.lib;bcrypt.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
 
+  if(_DEBUG)
+    set(MSVC_LIBS ${MSVC_LIBS} libucrtd.lib libvcruntimed.lib libcmtd.lib)
+  else()
+    set(MSVC_LIBS ${MSVC_LIBS} libucrt.lib libvcruntime.lib libcmt.lib)
+  endif()
+
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
   )
