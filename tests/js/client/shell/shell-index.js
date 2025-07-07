@@ -1636,12 +1636,8 @@ function ParallelIndexSuite() {
       // here because otherwise the server may be overwhelmed by too many
       // concurrent index creations being in progress.
       const maxThreads = 7;
-<<<<<<< HEAD
-      const noIndexes = versionHas('coverage') ? 40 : 80;
-=======
       // Relax condition for windows and macOS - TODO: fix this.
       const noIndexes = (platform.substr(0, 3) === 'win' || platform === 'darwin') ? 40 : 80;
->>>>>>> parent of 6560fb090f1 (Remove Windows/MSVC support (#20636))
 
       let time = require("internal").time;
       let start = time();

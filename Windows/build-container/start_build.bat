@@ -6,8 +6,8 @@ git clone --depth 1 --recurse-submodules --shallow-submodules --jobs 8 --branch 
 
 echo "Cloning done, now starting cmake..."
 
-cmake --fresh -B ./build/ -S ./src/  --preset community-win
+cmake -S ./src/ --preset community-win
 
 echo "Build arangod..."
 
-cmake --build ./build/ --config=Release --target arangod
+cmake --build ./src/build-presets/community-win --config=Release

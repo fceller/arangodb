@@ -354,16 +354,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     };
   }
 
-<<<<<<< HEAD
-  // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
-  
-  let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
-  sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
-  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions());
-  
-  instanceInfo.pid = res.pid;
-  instanceInfo.exitStatus = res;
-=======
   let res = {};
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     res = executeExternal(cmd, args, false, coverageEnvironment());
@@ -400,7 +390,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     instanceInfo.exitStatus = res;
     crashUtils.calculateMonitorValues(options, instanceInfo, res.pid, cmd);
   }
->>>>>>> parent of 6560fb090f1 (Remove Windows/MSVC support (#20636))
   const deltaTime = time() - startTime;
   let errorMessage = ' - ';
   if (sh.fetchSanFileAfterExit(res.pid)) {

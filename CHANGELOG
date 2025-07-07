@@ -11,8 +11,6 @@
 * Fix a possible crash when requesting the async registry:
   Does now not request the thread name of a potentially destroyed thread.
 
-<<<<<<< HEAD
-=======
 * Add detection of two threads working on an ExecutionBlock concurrently.
 
 * Add detection of two threads waiting for a PrefetchTask concurrently.
@@ -540,7 +538,6 @@
   ongoing stacktraces.
 
 
->>>>>>> Add-windows-support-back-to-3.12
 3.12.3 (2024-10-25)
 -------------------
 
