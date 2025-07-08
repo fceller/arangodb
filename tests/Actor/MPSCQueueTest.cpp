@@ -24,6 +24,7 @@
 #include <chrono>
 #include <thread>
 #include <string>
+#include <algorithm>
 
 #include "gtest/gtest.h"
 

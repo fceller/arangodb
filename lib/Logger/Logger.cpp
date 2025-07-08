@@ -184,7 +184,7 @@ auto Logger::logLevelTopics() -> std::unordered_map<LogTopic*, LogLevel> {
 }
 
 auto Logger::getLogLevels() -> LogLevels {
-  return {.topics = LogTopic::logLevelTopics()};
+  return {.all = std::nullopt, .topics = LogTopic::logLevelTopics()};
 }
 
 auto Logger::getAppendersConfig() -> AppendersLogLevelConfig {
