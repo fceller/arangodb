@@ -401,20 +401,20 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
     /// @brief _lastSent stores for each follower the time stamp of the time
     /// when the main Agent thread has last sent a non-empty
     /// appendEntriesRPC to that follower.
-    SteadyTimePoint _lastSent;
+    SteadyTimePoint _lastSent{};
 
     /// @brief stores for each follower the highest index log it has reported as
     /// locally logged, and the timestamp we last recevied an answer to
     /// sendAppendEntries
-    SteadyTimePoint _lastAckedTime;
+    SteadyTimePoint _lastAckedTime{};
     index_t _lastAckedIndex{0};
 
     /// @brief The earliest timepoint at which we will send new
     /// sendAppendEntries to a particular follower. This is a measure to avoid
     /// bombarding a follower, that has trouble keeping up.
-    SteadyTimePoint _earliestPackage;
+    SteadyTimePoint _earliestPackage{};
 
-    SteadyTimePoint _lastEmptyAcked;
+    SteadyTimePoint _lastEmptyAcked{};
   };
 
   Guarded<std::unordered_map<std::string, FollowerData>> _followerData;

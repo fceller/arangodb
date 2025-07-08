@@ -179,6 +179,7 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     }
     auto& idx = _indexInfos.emplace_back(
         IndexInfo{.collection = coll,
+                  .usedShard = {},
                   .outVariable = outVariable,
                   .condition = Condition::fromVPack(plan, condition),
                   .filter = std::move(filter),
@@ -463,6 +464,7 @@ ExecutionNode* JoinNode::clone(ExecutionPlan* plan,
                                        : nullptr,
         .index = it.index,
         .projections = it.projections,
+        .filterProjections = {},
         .usedAsSatellite = it.usedAsSatellite,
         .producesOutput = it.producesOutput,
         .isLateMaterialized = it.isLateMaterialized,

@@ -146,7 +146,8 @@ LogPersistor::LogPersistor(LogId logId,
 
   // TODO - implement segmented logs
   auto filename = std::to_string(logId.id()) + ".log";
-  auto [_, inserted] = _fileSet.emplace(LogFile{.filename = filename});
+  auto [_, inserted] = _fileSet.emplace(LogFile{.filename = filename, .first = {},
+                                               .last = {}});
 
   ADB_PROD_ASSERT(inserted);
 

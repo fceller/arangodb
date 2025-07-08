@@ -42,6 +42,8 @@
 #include "V8/JSLoader.h"
 #include "V8Server/GlobalExecutorMethods.h"
 
+#include "Basics/Thread.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 

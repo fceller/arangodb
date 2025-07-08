@@ -48,6 +48,8 @@
 #include "Scheduler/Scheduler.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
+#include "Statistics/StatisticsFeature.h"
+#include "Statistics/StatisticsWorker.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"

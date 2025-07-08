@@ -41,6 +41,7 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Statistics/StatisticsWorker.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"

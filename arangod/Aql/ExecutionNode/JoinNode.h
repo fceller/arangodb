@@ -51,9 +51,9 @@ class JoinNode : public ExecutionNode {
 
  public:
   struct IndexInfo {
-    aql::Collection const* collection;
-    std::string usedShard;
-    Variable const* outVariable;
+    aql::Collection const* collection = nullptr;
+    std::string usedShard = {};
+    Variable const* outVariable = nullptr;
     std::unique_ptr<Condition> condition;
     std::unique_ptr<Expression> filter;
     transaction::Methods::IndexHandle index;

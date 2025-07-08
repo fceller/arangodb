@@ -31,6 +31,7 @@
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Statistics/StatisticsWorker.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

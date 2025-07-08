@@ -70,6 +70,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Statistics/StatisticsWorker.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
