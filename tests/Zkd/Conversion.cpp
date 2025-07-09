@@ -25,8 +25,10 @@
 
 #include "gtest/gtest.h"
 
+#include <array>
 #include <format>
 #include <random>
+#include <chrono>
 
 using namespace arangodb;
 using namespace arangodb::zkd;
