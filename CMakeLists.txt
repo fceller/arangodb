@@ -692,7 +692,7 @@ if (MSVC)
   # bcrypt is needed for SSL
   set(MSVC_LIBS Shlwapi.lib;crypt32.lib;bcrypt.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
 
-  if(_DEBUG)
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(MSVC_LIBS ${MSVC_LIBS} libucrtd.lib libvcruntimed.lib libcmtd.lib)
   else()
     set(MSVC_LIBS ${MSVC_LIBS} libucrt.lib libvcruntime.lib libcmt.lib)

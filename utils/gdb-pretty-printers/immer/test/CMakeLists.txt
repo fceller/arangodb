@@ -6,6 +6,7 @@ add_executable(flex_vector_test flex_vector_test.cpp)
 
 target_link_libraries(flex_vector_test immer)
 target_link_libraries(flex_vector_test fmt::fmt)
+target_link_libraries(flex_vector_test ${MSVC_LIBS})
 
 set_target_properties(flex_vector_test
         PROPERTIES
