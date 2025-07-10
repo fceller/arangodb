@@ -127,13 +127,14 @@
       "generator": "Visual Studio 17 2022",
       "architecture": "x64",
       "cacheVariables": {
+        "USE_GOOGLE_TESTS": "On",
         "STATIC_EXECUTABLES": "Off",
         "SKIP_PACKAGING": "TRUE",
         "USE_JEMALLOC": "Off",
         "USE_LIBUNWIND": "Off",
         "USE_V8": "On",
         "USE_BUILD_ID_READER": "Off",
-        "MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+        "MSVC_RUNTIME_LIBRARY": "MultiThreaded"
       }
     },
     {
@@ -159,7 +160,7 @@
         "USE_STRICT_OPENSSL_VERSION": "Off"
       }
     },
-        {
+    {
       "name": "community-win-developer",
       "inherits": [
         "maintainer",
@@ -179,7 +180,7 @@
         "USE_LIBUNWIND": "Off",
         "USE_V8": "On",
         "USE_BUILD_ID_READER": "Off",
-        "MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+        "MSVC_RUNTIME_LIBRARY": "MultiThreadedDebug>"
       }
     },
     {
