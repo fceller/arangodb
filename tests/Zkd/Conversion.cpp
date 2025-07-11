@@ -46,7 +46,7 @@ struct Zkd_RandomDoubleConversionTest : testing::Test {
       _doublesToTest[i] = unified_distribution(engine);
     }
   }
-  long const _seed{std::chrono::system_clock::now().time_since_epoch().count()};
+  const long _seed = static_cast<long>(std::chrono::system_clock::now().time_since_epoch().count());
   std::array<double, 1000> _doublesToTest{};
 };
 

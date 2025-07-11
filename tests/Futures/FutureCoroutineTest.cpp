@@ -13,6 +13,8 @@
 using namespace arangodb;
 using namespace arangodb::futures;
 
+typedef unsigned int uint;
+
 namespace {
 struct WaitSlot {
   void resume() {

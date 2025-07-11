@@ -407,9 +407,9 @@ TEST(GeoFilterTest, query) {
       EXPECT_NE(nullptr, values);
       auto* value = irs::get<irs::payload>(*values);
       EXPECT_NE(nullptr, value);
-      auto it = prepared->execute({.segment = segment});
+      auto it = prepared->execute({.segment = segment, .wand = {}});
       EXPECT_NE(nullptr, it);
-      auto seek_it = prepared->execute({.segment = segment});
+      auto seek_it = prepared->execute({.segment = segment, .wand = {}});
       EXPECT_NE(nullptr, seek_it);
       auto* cost = irs::get<irs::cost>(*it);
       EXPECT_NE(nullptr, cost);
@@ -444,12 +444,12 @@ TEST(GeoFilterTest, query) {
       EXPECT_TRUE(irs::doc_limits::eof(seek_it->seek(it->value())));
 
       {
-        auto it = prepared->execute({.segment = segment});
+        auto it = prepared->execute({.segment = segment, .wand = {}});
         EXPECT_NE(nullptr, it);
 
         while (it->next()) {
           auto const docId = it->value();
-          auto seek_it = prepared->execute({.segment = segment});
+          auto seek_it = prepared->execute({.segment = segment, .wand = {}});
           EXPECT_NE(nullptr, seek_it);
           auto column_it = column->iterator(irs::ColumnHint::kNormal);
           EXPECT_NE(nullptr, column_it);
@@ -791,9 +791,9 @@ TEST(GeoFilterTest, checkScorer) {
       EXPECT_NE(nullptr, column_it);
       auto* payload = irs::get<irs::payload>(*column_it);
       EXPECT_NE(nullptr, payload);
-      auto it = prepared->execute({.segment = segment, .scorers = ord});
+      auto it = prepared->execute({.segment = segment, .scorers = ord, .wand = {}});
       EXPECT_NE(nullptr, it);
-      auto seek_it = prepared->execute({.segment = segment});
+      auto seek_it = prepared->execute({.segment = segment, .wand = {}});
       EXPECT_NE(nullptr, seek_it);
       auto* cost = irs::get<irs::cost>(*it);
       EXPECT_NE(nullptr, cost);
@@ -829,12 +829,12 @@ TEST(GeoFilterTest, checkScorer) {
       EXPECT_TRUE(irs::doc_limits::eof(seek_it->seek(it->value())));
 
       {
-        auto it = prepared->execute({.segment = segment, .scorers = ord});
+        auto it = prepared->execute({.segment = segment, .scorers = ord, .wand = {}});
         EXPECT_NE(nullptr, it);
 
         while (it->next()) {
           auto const docId = it->value();
-          auto seek_it = prepared->execute({.segment = segment});
+          auto seek_it = prepared->execute({.segment = segment, .wand = {}});
           EXPECT_NE(nullptr, seek_it);
           auto column_it = column->iterator(irs::ColumnHint::kNormal);
           EXPECT_NE(nullptr, column_it);

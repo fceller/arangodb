@@ -28,10 +28,10 @@
 namespace arangodb::replication2::storage {
 
 struct PersistedStateInfo {
-  LogId stateId;  // could be removed
+  LogId stateId{};  // could be removed
   replicated_state::SnapshotInfo snapshot;
-  replicated_state::StateGeneration generation;
-  replication2::agency::ImplementationSpec specification;
+  replicated_state::StateGeneration generation{};
+  replication2::agency::ImplementationSpec specification{};
 };
 
 template<class Inspector>

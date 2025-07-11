@@ -103,8 +103,8 @@ struct SnapshotInfo {
   void updateStatus(SnapshotStatus status) noexcept;
 
   SnapshotStatus status{SnapshotStatus::kUninitialized};
-  clock::time_point timestamp;
-  std::optional<Error> error;
+  clock::time_point timestamp{};
+  std::optional<Error> error{};
 
   friend auto operator==(SnapshotInfo const&, SnapshotInfo const&) noexcept
       -> bool = default;

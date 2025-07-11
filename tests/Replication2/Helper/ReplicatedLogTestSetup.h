@@ -454,11 +454,11 @@ struct WholeLog {
 
   struct ConfigUpdates {
     // TODO Use participant IDs instead of references
-    std::optional<std::reference_wrapper<LogContainer>> setLeader;
-    std::vector<std::reference_wrapper<LogContainer>> addParticipants;
-    std::vector<std::reference_wrapper<LogContainer>> removeParticipants;
-    std::optional<std::uint64_t> setWriteConcern;
-    std::optional<bool> setWaitForSync;
+    std::optional<std::reference_wrapper<LogContainer>> setLeader = std::nullopt;
+    std::vector<std::reference_wrapper<LogContainer>> addParticipants{};
+    std::vector<std::reference_wrapper<LogContainer>> removeParticipants{};
+    std::optional<std::uint64_t> setWriteConcern = std::nullopt;
+    std::optional<bool> setWaitForSync = std::nullopt;
 
     auto updateConfig(LogConfig config) const -> LogConfig {
       for (auto const& toRemove : removeParticipants) {

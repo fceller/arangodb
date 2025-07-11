@@ -443,7 +443,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_FALSE(filter);
 
     auto prepared = filter.prepare({.index = *reader});
-    auto docs = prepared->execute({.segment = segment});
+    auto docs = prepared->execute({.segment = segment, .wand = {}});
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -519,6 +519,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto docs = prepared->execute({
         .segment = segment,
         .ctx = &queryCtx,
+        .wand = {}
     });
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
     EXPECT_FALSE(docs->next());

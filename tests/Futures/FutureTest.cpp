@@ -37,6 +37,8 @@
 #include <stdexcept>
 #include <variant>
 
+typedef unsigned int uint;
+
 using namespace arangodb::futures;
 
 namespace {
