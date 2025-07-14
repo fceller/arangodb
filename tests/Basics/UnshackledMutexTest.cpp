@@ -33,6 +33,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <algorithm>
 
 /**
  * @brief The constructor of WorkerThread starts a thread, which immediately

@@ -99,7 +99,7 @@ TEST_F(ThreadOwnedListDeathTest, another_thread_cannot_add_a_promise) {
   std::jthread([&]() {
     EXPECT_DEATH(registry->add([]() { return NodeData{1}; }),
                  "Assertion failed");
-  });
+  }).join();
 }
 
 TEST_F(ThreadOwnedListTest, iterates_over_all_promises) {
@@ -251,5 +251,5 @@ TEST_F(ThreadOwnedListDeathTest,
   auto registry = MyList::make();
 
   std::jthread(
-      [&] { EXPECT_DEATH(registry->garbage_collect(), "Assertion failed"); });
+      [&] { EXPECT_DEATH(registry->garbage_collect(), "Assertion failed"); }).join();
 }

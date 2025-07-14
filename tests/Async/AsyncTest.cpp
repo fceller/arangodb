@@ -13,6 +13,8 @@
 
 namespace {
 
+#define uint unsigned int
+
 auto promise_count_in_registry() -> uint {
   uint promise_count = 0;
   arangodb::async_registry::get_thread_registry().for_node(

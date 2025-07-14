@@ -25,6 +25,8 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/QueryContext.h"
 #include "IResearch/IResearchView.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
