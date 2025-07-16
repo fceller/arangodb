@@ -359,7 +359,7 @@ target_link_libraries(arangodbtests
 )
 
 if (USE_V8)
-  target_link_libraries(arangodbtests arango_v8server)
+  target_link_libraries(arangodbtests arango_v8server arango_v8_no_deadline)
 endif ()
 
 if (USE_ENTERPRISE)

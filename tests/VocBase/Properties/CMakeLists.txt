@@ -9,8 +9,6 @@ set(ARANGODB_VOCBASE_PROPERTIES_TEST_SOURCES
         CollectionCreateOptionsTest.cpp
         CreateCollectionBodyTest.cpp
         KeyGeneratorPropertiesTest.cpp
-
-        # ${PROJECT_SOURCE_DIR}/arangod/VocBase/Identifiers/DataSourceId.cpp
 )
 
 target_sources(
