@@ -2176,7 +2176,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         // it is used for compatibility with old versions
 #ifdef USE_ENTERPRISE
         if (encrypted) {
-          return kExecutors<true,  MaterializeType::LateMaterialize_UseStoredValues[executorIdx](
+          return kExecutors <true,  MaterializeType::LateMaterialize_UseStoredValues>[executorIdx](
               &engine, this, std::move(registerInfos),
               std::move(executorInfos));
         }
