@@ -31,6 +31,8 @@
 #include <string>
 #include <string_view>
 
+#undef DeleteFile
+
 namespace arangodb::checksum {
 
 class ChecksumCalculator {
@@ -104,7 +106,7 @@ class ChecksumEnv : public rocksdb::EnvWrapper {
       std::unique_ptr<rocksdb::WritableFile>* result,
       rocksdb::EnvOptions const& options) override;
 
-  rocksdb::Status DeleteFile(std::string const& fileName) override;
+  virtual rocksdb::Status DeleteFile(const std::string& fileName) override;
 
   std::shared_ptr<ChecksumHelper> getHelper() const { return _helper; }
 
