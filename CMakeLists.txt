@@ -963,7 +963,10 @@ endfunction()
 function(add_compile_warnings_flags)
   if (USE_FAIL_ON_WARNINGS)
     if (MSVC)
+      # we can use clang switches with clang-cl on Windows as well
+      add_compile_options(-Wno-error=enum-constexpr-conversion -Wno-error=unused-local-typedef)
       add_compile_options(/WX /W4 /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+
       if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
         # There's a warning about /MP being unused if compiling only a single file
         add_compile_options(-Wno-unused-command-line-argument)
