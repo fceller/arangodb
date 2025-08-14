@@ -967,11 +967,9 @@ function(add_compile_warnings_flags)
       add_compile_options(-Wno-error=enum-constexpr-conversion -Wno-error=unused-local-typedef)
       add_compile_options(/WX /W4 /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 
-      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-        # There's a warning about /MP being unused if compiling only a single file
-        add_compile_options(-Wno-unused-command-line-argument)
-        add_compile_options(-Wno-unused-function)
-      endif()
+      # There's a warning about /MP being unused if compiling only a single file
+      add_compile_options(-Wno-unused-command-line-argument)
+      add_compile_options(-Wno-unused-function)
     else ()
       add_compile_options(-Werror -Wno-error=deprecated-declarations)
       if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -1143,11 +1141,12 @@ set(CMAKE_C_FLAGS                  ""                                           
 set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -D_DEBUG=1"                   CACHE INTERNAL "C debug flags")
 set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
 if(MSVC)
-  set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS}"   CACHE INTERNAL "C release flags")
+  set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} /O2"   CACHE INTERNAL "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} /O2"  CACHE INTERNAL "C release with debug info flags")
 else()
   set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
 endif()
-set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
 
 # cxx
 # note: when building one of the build types, CMake will automatically combine
@@ -1158,18 +1157,17 @@ set(CMAKE_CXX_FLAGS                ""                                           
 set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -D_DEBUG=1"                   CACHE INTERNAL "C++ debug flags")
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
 if(MSVC)
-  set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS}"   CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} /O2"   CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} /O2"  CACHE INTERNAL "C++ release with debug info flags")
 else()
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
 endif()
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
-
 
 if(NOT MSVC)
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 endif()
-
 
 # put together the final flags
 set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS}")
