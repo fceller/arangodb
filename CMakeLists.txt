@@ -135,12 +135,12 @@ endif()
 
 message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
 
-if (MSVC)
-  option(USE_CCACHE
-    "whether we want to use ccache"
-    OFF
-  )
-endif ()
+option(USE_CCACHE "whether we want to use ccache" OFF)
+
+if(USE_CCACHE AND WIN32)
+  set(CMAKE_C_COMPILER_LAUNCHER ccache)
+  set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
+endif()
 
 ################################################################################
 # SNAP version
@@ -451,6 +451,8 @@ if (WIN32)
   add_definitions(-DPSAPI_VERSION=1)
   add_definitions(-D_MBCS)
   add_definitions(-DWIN64)
+  add_definitions(-DWIN32_LEAN_AND_MEAN)
+  add_compile_options("/J")
 endif()
 
 # ------------------------------------------------------------------------------
@@ -612,8 +614,8 @@ if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
       message(WARNING "ArangoDB requires clang 10.0 or newer, building with older compiler versions is unsupported")
     endif()
-    list(APPEND BASE_LIBS atomic)
   endif ()
+  list(APPEND BASE_LIBS atomic)
 endif ()
 
 # need c++20
@@ -881,7 +883,9 @@ endif()
 # NDEBUG
 # ------------------------------------------------------------------------------
 
-add_definitions(-DNDEBUG)
+if((NOT CMAKE_BUILD_TYPE STREQUAL "Debug") and (NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+  add_definitions(-DNDEBUG)
+endif()
 
 ################################################################################
 ## FLAGS
@@ -964,7 +968,6 @@ endif()
 # compiler options
 message(STATUS "Compiler type: ${CMAKE_CXX_COMPILER} , compiler ID: ${CMAKE_CXX_COMPILER_ID} , version: ${CMAKE_CXX_COMPILER_VERSION} ,is clang: ${CMAKE_COMPILER_IS_CLANG}, MSVC: ${MSVC}")
 
-
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
   set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
@@ -1000,17 +1003,6 @@ elseif((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND NOT MSVC)
   endif()
 elseif ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND MSVC)
   # clang-cl
-  set(CMAKE_C_FLAGS                ""                                      CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"     CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1"                               CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2"                               CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                           CACHE INTERNAL "C release with debug info flags")
-
-  set(CMAKE_CXX_FLAGS                "/wd4996"                             CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"   CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1"                             CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2"                             CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                         CACHE INTERNAL "C++ release with debug info flags")
 
   if(USE_CCACHE)
     find_program(CCACHE ccache REQUIRED)
@@ -1036,41 +1028,24 @@ elseif ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND MSVC)
       # copy ccache as cl to build directory, this integrates ccache without cmake needing any other setup than a new tool path.
       # this solution also does not require administrative rights on Windows.
       file(COPY_FILE 
-        ${CCACHE} ${CMAKE_BINARY_DIR}/cl.exe
+        ${CCACHE} ${CMAKE_BINARY_DIR}/ccache.exe
         ONLY_IF_DIFFERENT
       )
 
       set(CMAKE_VS_GLOBALS
-        "CLToolExe=cl.exe"
+        "CLToolExe=ccache.exe"
         "CLToolPath=${CMAKE_BINARY_DIR}"
         "TrackFileAccess=false"
         "UseMultiToolTask=true"
         "DebugInformationFormat=OldStyle"
       )
-
-      if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
-      elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-        # string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-        # string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
-      elseif(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
-        # For minimal size binaries with clang-cl, use /O1 (optimize for size), /Gy (function-level linking), /Gw (global data optimization), and /Zl (omit default library name in .obj)
-        set(CMAKE_C_FLAGS_MINSIZEREL "/O1 /Gy /Gw /Zl")
-        set(CMAKE_CXX_FLAGS_MINSIZEREL "/O1 /Gy /Gw /Zl")
-      elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
-      endif()
     else(CCACHE)
       message(STATUS "CCACHE NOT FOUND")
     endif(CCACHE)
   endif(USE_CCACHE)
 
   add_definitions(/bigobj)
-  if (CMAKE_COMPILER_IS_CLANG) # clang-cl
-    set(BASE_FLAGS "-Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
-  endif()
+  set(BASE_FLAGS "/Zl -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
 else()
   # unknown compiler
   message(FATAL_ERROR "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
@@ -1079,7 +1054,7 @@ endif()
 
 # flags for builds without debug symbols
 if(MSVC)
-  set(NODEBUGINFO_FLAGS "/Zl")
+  # MSVC does not support -g0 style behaviour, simply do not pass /Z* flags
 else()
   set(NODEBUGINFO_FLAGS "-g0")
 endif()
@@ -1088,59 +1063,55 @@ endif()
 if(USE_MINIMAL_DEBUGINFO)
   # minimal debug symbols
   if(MSVC)
-    set(DEBUGINFO_FLAGS "-Z7")
+    set(DEBUGINFO_FLAGS "/Z7")
   else()
     set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz")
   endif()
 else ()
   # full debug symbols
   if(MSVC)
-    set(DEBUGINFO_FLAGS "-Zi")
+    set(DEBUGINFO_FLAGS "/Zi")
   else()
     set(DEBUGINFO_FLAGS "-g -gz")
   endif()
 endif ()
 
-if(MSVC)
-  add_compile_options("/J")
-  add_compile_options("/DNOMINMAX")
-  add_compile_options("/DWIN32_LEAN_AND_MEAN")
-endif()
 # c
 # note: when building one of the build types, CMake will automatically combine
 # the base flags from CMAKE_C_FLAGS with build type-specific flags in 
 # CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
 # there is no need to repeat the base flags in the build-type specific flags!
-set(CMAKE_C_FLAGS                  ""                                                CACHE INTERNAL "default C compiler flags")
-set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -D_DEBUG=1"                   CACHE INTERNAL "C debug flags")
-set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
-if(MSVC)
-  set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} /O2"   CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} /O2"  CACHE INTERNAL "C release with debug info flags")
-else()
-  set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
-endif()
 
 # cxx
 # note: when building one of the build types, CMake will automatically combine
 # the base flags from CMAKE_CXX_FLAGS with build type-specific flags in 
 # CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
 # there is no need to repeat the base flags in the build-type specific flags!
-set(CMAKE_CXX_FLAGS                ""                                                CACHE INTERNAL "default C++ compiler flags")
-set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -D_DEBUG=1"                   CACHE INTERNAL "C++ debug flags")
-set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
-if(MSVC)
-  set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} /O2"   CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} /O2"  CACHE INTERNAL "C++ release with debug info flags")
+
+if ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND MSVC)
+  set(CMAKE_C_FLAGS                ""                                      CACHE INTERNAL "default C compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} /D _DEBUG /MTd /Ob0 /Od /RTC1"     CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} /MT /O1"                               CACHE INTERNAL "C minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} /MT /O2"                               CACHE INTERNAL "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} /MT /O2"                           CACHE INTERNAL "C release with debug info flags")
+
+  set(CMAKE_CXX_FLAGS                "/wd4996"                             CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} /D _DEBUG /MTd /Ob0 /Od /RTC1"   CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} /MT /O1 /Gy /Gw"                     CACHE INTERNAL "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} /MT /O2"                             CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} /MT /O2"                         CACHE INTERNAL "C++ release with debug info flags")
 else()
+  set(CMAKE_C_FLAGS                  ""                                                CACHE INTERNAL "default C compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -D_DEBUG=1 -O0"                   CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
+
+  set(CMAKE_CXX_FLAGS                ""                                                CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -D_DEBUG=1 -O0"                   CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
-endif()
-
-if(NOT MSVC)
-  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 endif()
 
 # put together the final flags
