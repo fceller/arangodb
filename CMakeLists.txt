@@ -598,6 +598,10 @@ if(MSVC)
   elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1920 AND MSVC_VERSION VERSION_LESS 1924)
     message(FATAL_ERROR "ArangoDB requires at least MSVC 2019 update 16.4!")
   endif()
+
+  # Increase the reserved stack size for all threads to 4MB
+  # Note: this is only _reserved_ memory, not necessarily _committed_ memory
+  set(BASE_LD_FLAGS  "${BASE_LD_FLAGS} /STACK:4194304")
 endif()
 
 if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
@@ -614,8 +618,8 @@ if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
       message(WARNING "ArangoDB requires clang 10.0 or newer, building with older compiler versions is unsupported")
     endif()
+    list(APPEND BASE_LIBS atomic)
   endif ()
-  list(APPEND BASE_LIBS atomic)
 endif ()
 
 # need c++20
@@ -1089,13 +1093,13 @@ endif ()
 # there is no need to repeat the base flags in the build-type specific flags!
 
 if ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND MSVC)
-  set(CMAKE_C_FLAGS                ""                                      CACHE INTERNAL "default C compiler flags")
+  set(BASE_C_FLAGS                 "/W3 /MP"                                              CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} /D _DEBUG /MTd /Ob0 /Od /RTC1"     CACHE INTERNAL "C debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} /MT /O1"                               CACHE INTERNAL "C minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} /MT /O2"                               CACHE INTERNAL "C release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} /MT /O2"                           CACHE INTERNAL "C release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                "/wd4996"                             CACHE INTERNAL "default C++ compiler flags")
+  set(BASE_CXX_FLAGS                "/wd4996 /GR /EHsc /Zc:__cplusplus /W3 /MP"                   CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} /D _DEBUG /MTd /Ob0 /Od /RTC1"   CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} /MT /O1 /Gy /Gw"                     CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} /MT /O2"                             CACHE INTERNAL "C++ release flags")
