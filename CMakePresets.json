@@ -133,8 +133,7 @@
         "USE_JEMALLOC": "Off",
         "USE_LIBUNWIND": "Off",
         "USE_V8": "On",
-        "USE_BUILD_ID_READER": "Off",
-        "MSVC_RUNTIME_LIBRARY": "MultiThreaded"
+        "USE_BUILD_ID_READER": "Off"
       }
     },
     {
@@ -179,8 +178,7 @@
         "USE_JEMALLOC": "Off",
         "USE_LIBUNWIND": "Off",
         "USE_V8": "On",
-        "USE_BUILD_ID_READER": "Off",
-        "MSVC_RUNTIME_LIBRARY": "MultiThreadedDebug>"
+        "USE_BUILD_ID_READER": "Off"
       }
     },
     {
