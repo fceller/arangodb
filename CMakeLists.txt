@@ -883,7 +883,7 @@ endif()
 # NDEBUG
 # ------------------------------------------------------------------------------
 
-if((NOT CMAKE_BUILD_TYPE STREQUAL "Debug") and (NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   add_definitions(-DNDEBUG)
 endif()
 
