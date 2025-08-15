@@ -171,16 +171,6 @@ set(BUILD_SHARED_LIBS OFF)
 # required for clang completion in editors - must be set after creating project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(USE_FAIL_ON_WARNINGS
-    AND CMAKE_GENERATOR MATCHES "^Visual Studio"
-    AND CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
-  message(WARNING [[
-    clang-cl is used with USE_FAIL_ON_WARNINGS(i.e. /WX).
-    The build will probably fail, because system header includes aren't passed
-    as system header includes to clang-cl through the VS toolchain.
-  ]])
-endif()
-
 # Static executables:
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if(STATIC_EXECUTABLES)
@@ -419,6 +409,17 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "DragonFly.*|FreeBSD")
   set(FREEBSD TRUE)
 elseif(CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
   set(SYSV5 TRUE)
+elseif(CMAKE_SYSTEM_NAME MATCHES "Windows" OR WIN32)
+  # For Windows we use WIN32 define (already defined by CMake)
+  set(WINDOWS TRUE)
+  set(MSBUILD TRUE)
+elseif (APPLE)
+  if (CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
+    set(DARWIN TRUE)
+  elseif (CMAKE_SYSTEM_NAME MATCHES ".*MacOS.*")
+    set(DARWIN TRUE)
+  endif ()
+  find_program(BREW brew)
 endif()
 
 # ------------------------------------------------------------------------------
@@ -443,60 +444,27 @@ if (UNIX AND NOT APPLE)
 endif()
 
 if (WIN32)
-  set(WINDOWS TRUE)
-  set(MSBUILD TRUE)
-
   add_definitions(-D_USE_MATH_DEFINES)
   add_definitions(-DNOMINMAX)
   add_definitions(-D_WIN32_WINNT=0x600)
   add_definitions(-DINCL_EXTRA_HTON_FUNCTIONS)
   add_definitions(-DPSAPI_VERSION=1)
-
-elseif (UNIX AND NOT APPLE)
-  if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
-    set(LINUX TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kFreeBSD.*")
-    set(FREEBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kNetBSD.*|NetBSD.*")
-    set(NETBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kOpenBSD.*|OpenBSD.*")
-    set(OPENBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*GNU.*")
-    set(GNU TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
-    set(BSDI TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "DragonFly.*|FreeBSD")
-    set(FREEBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
-    set(SYSV5 TRUE)
-  endif ()
-elseif (APPLE)
-  if (CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
-    set(DARWIN TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*MacOS.*")
-    set(DARWIN TRUE)
-  endif ()
-  find_program(BREW brew)
-endif ()
+  add_definitions(-D_MBCS)
+  add_definitions(-DWIN64)
+endif()
 
 # ------------------------------------------------------------------------------
 # user options
 # ------------------------------------------------------------------------------
 
+option(USE_JEMALLOC "use jemalloc memory allocator" ON)
+option(USE_LIBUNWIND "use of libunwind for stack traces" ON)
 
-if (WINDOWS)
+if (WINDOWS OR APPLE)
+  # disable jemalloc and libunwind on Windows/Apple
   SET(USE_JEMALLOC OFF)
-elseif (APPLE)
-  SET(USE_JEMALLOC OFF)
-else ()
-  option(
-    USE_JEMALLOC
-    "use jemalloc memory allocator"
-    ON
-  )
+  SET(USE_LIBUNWIND OFF)
 endif ()
-
-option(USE_LIBUNWIND "use libunwind for stack traces" ON)
 
 option(USE_BUILD_ID_READER "Add code to read arangod's build-id from within arangod" ON)
 
@@ -507,7 +475,7 @@ else()
 endif()
 
 # Guess whether we're using mold
-if(NOT MSVC)
+if(NOT WINDOWS)
   execute_process(
     COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_EXE_LINKER_FLAGS} -Wl,--version
     OUTPUT_VARIABLE LINKER_VERSION_OUT)
@@ -517,7 +485,8 @@ if(NOT MSVC)
     SET(LINKER_IS_MOLD FALSE)
   endif ()
 else()
-  MESSAGE(STATUS "No mold detection for MSVC build.")
+  MESSAGE(STATUS "No mold detection for Windows build.")
+  SET(LINKER_IS_MOLD FALSE)
 endif()
 
 # mold doesn't support the linker scripts currently used for the build id reader, and will result in the error
@@ -531,7 +500,6 @@ endif()
 ################################################################################
 ## EXTERNAL PROGRAMS
 ################################################################################
-
 set(MAKE make)
 
 find_package(PythonInterp 3 EXACT REQUIRED)
@@ -599,19 +567,11 @@ CheckCompilerVersion(
 )
 
 if(CMAKE_COMPILER_IS_CLANG) 
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "16.0")
-    message(WARNING "ArangoDB requires clang 16.0 or newer, building with older compiler versions is unsupported")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.1")
+    message(WARNING "ArangoDB requires clang 19.1 or newer, building with older compiler versions is unsupported")
   endif()
  endif()
 
-if (MSVC)  #TODO: MDVarma  CR: check if needed
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
-  # Increase the reserved stack size for all threads to 4MB
-  # Note: this is only _reserved_ memory, not necessarily _committed_ memory
-  set(BASE_LD_FLAGS  "${BASE_LD_FLAGS} /STACK:4194304")
-endif ()
 
 # FIXME: refactor/cleanup check below
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -692,10 +652,26 @@ if (MSVC)
   # bcrypt is needed for SSL
   set(MSVC_LIBS Shlwapi.lib;crypt32.lib;bcrypt.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
 
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(MSVC_LIBS ${MSVC_LIBS} libucrtd.lib libvcruntimed.lib libcmtd.lib)
+  if(STATIC_EXECUTABLES)
+    # Static linkage files in accordance with:
+    # https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=msvc-170
+
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+      set(MSVC_LIBS ${MSVC_LIBS} libucrtd.lib libvcruntimed.lib libcmtd.lib)
+    else()
+      set(MSVC_LIBS ${MSVC_LIBS} libucrt.lib libvcruntime.lib libcmt.lib)
+    endif()
   else()
-    set(MSVC_LIBS ${MSVC_LIBS} libucrt.lib libvcruntime.lib libcmt.lib)
+    # Dynamic linkage files
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "")
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+      set(MSVC_LIBS ${MSVC_LIBS} ucrtd.lib vcruntimed.lib msvcrtd.lib)
+    else()
+      set(MSVC_LIBS ${MSVC_LIBS} ucrt.lib vcruntime.lib.lib msvcrt.lib)
+    endif()
   endif()
 
   set(CMAKE_EXE_LINKER_FLAGS
@@ -703,13 +679,11 @@ if (MSVC)
   )
   # We currently need to disable ICF because unfortunately we have some code
   # that depends on unique addresses for functions or read-only data members.
-  set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "/DEBUG /OPT:REF /OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "/OPT:REF /OPT:NOICF")
   set(CMAKE_EXE_LINKER_FLAGS_RELEASE        "/OPT:REF /OPT:NOICF")
   set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /OPT:REF /OPT:NOICF")
 else ()
-  set(CMAKE_EXE_LINKER_FLAGS
-    "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}"
-  )
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}")
 endif ()
 
 ################################################################################
@@ -962,7 +936,7 @@ endfunction()
 
 function(add_compile_warnings_flags)
   if (USE_FAIL_ON_WARNINGS)
-    if (MSVC)
+    if (MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       # we can use clang switches with clang-cl on Windows as well
       add_compile_options(-Wno-error=enum-constexpr-conversion -Wno-error=unused-local-typedef)
       add_compile_options(/WX /W4 /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -988,6 +962,8 @@ endif()
 
 
 # compiler options
+message(STATUS "Compiler type: ${CMAKE_CXX_COMPILER} , compiler ID: ${CMAKE_CXX_COMPILER_ID} , version: ${CMAKE_CXX_COMPILER_VERSION} ,is clang: ${CMAKE_COMPILER_IS_CLANG}, MSVC: ${MSVC}")
+
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
@@ -1009,6 +985,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overread")
   endif()
 elseif((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND NOT MSVC)
+  # clang
   message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
   set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
   set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
@@ -1021,22 +998,15 @@ elseif((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND NOT MSVC)
   # broken warnings in clang-19
     set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=missing-designated-field-initializers")
   endif()
-elseif (MSVC)
-  message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
-
-  if (USE_MINIMAL_DEBUGINFO)
-    message(FATAL_ERROR "USE_MINIMAL_DEBUGINFO is not supported for this compiler")
-  endif ()
-
-  set(BASE_FLAGS "/wd4996 ${BASE_FLAGS}")
-
+elseif ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND MSVC)
+  # clang-cl
   set(CMAKE_C_FLAGS                ""                                      CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"     CACHE INTERNAL "C debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1"                               CACHE INTERNAL "C minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE        "/MT /O2"                               CACHE INTERNAL "C release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                           CACHE INTERNAL "C release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                ""                                    CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS                "/wd4996"                             CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"   CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1"                             CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2"                             CACHE INTERNAL "C++ release flags")
@@ -1082,8 +1052,12 @@ elseif (MSVC)
         string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
         string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
       elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+        # string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+        # string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+      elseif(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+        # For minimal size binaries with clang-cl, use /O1 (optimize for size), /Gy (function-level linking), /Gw (global data optimization), and /Zl (omit default library name in .obj)
+        set(CMAKE_C_FLAGS_MINSIZEREL "/O1 /Gy /Gw /Zl")
+        set(CMAKE_CXX_FLAGS_MINSIZEREL "/O1 /Gy /Gw /Zl")
       elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
         string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
         string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
@@ -1099,7 +1073,7 @@ elseif (MSVC)
   endif()
 else()
   # unknown compiler
-  message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
+  message(FATAL_ERROR "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
   set(BASE_FLAGS "-Wall ${BASE_FLAGS}")
 endif()
 
@@ -1285,7 +1259,6 @@ endif()
 if (DEFINED OPENSSL_ROOT_DIR AND NOT "${OPENSSL_ROOT_DIR}" STREQUAL "")
   message ("Use OPENSSL_ROOT_DIR: ${OPENSSL_ROOT_DIR}")
 endif ()
-message(STATUS "MSVC: ${MSVC}, WIN32: ${WIN32}, CYGWIN: ${CYGWIN}")
 
 find_package(OpenSSL REQUIRED)
 
