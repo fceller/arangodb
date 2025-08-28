@@ -92,11 +92,9 @@ target_link_libraries(arango_rocksdb
   snappy)
 
   # -- FIXWINDOWS: this is a workaround for the fact that faiss is not enabled for now on WIndows
-if (NOT WIN32)
-  target_link_libraries(arango_rocksdb
-    faiss 
-  )
-endif()
+# if (NOT WIN32)
+target_link_libraries(arango_rocksdb faiss)
+# endif()
   
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})

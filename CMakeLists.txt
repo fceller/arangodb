@@ -1406,7 +1406,13 @@ if(NOT WIN32)
   add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_ORIG}")
-endif() #WIN32 
+else()
+  # use precompiled FAISS on windows from vcpkg repo
+  find_package(OpenMP REQUIRED)
+  find_package(LAPACK REQUIRED)
+  find_package(BLAS REQUIRED)
+  find_package(FAISS REQUIRED)
+endif() #WIN32
 
 # ------------------------------------------------------------------------------
 # RocksDB
