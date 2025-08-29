@@ -24,7 +24,7 @@ target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/clie
 
 target_link_libraries(${BIN_ARANGOBENCH}
   arango
-  ${MSVC_LIBS}
+#  ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost

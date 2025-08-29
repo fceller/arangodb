@@ -4,9 +4,11 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.25)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -452,6 +454,7 @@ if (WIN32)
   add_definitions(-D_MBCS)
   add_definitions(-DWIN64)
   add_definitions(-DWIN32_LEAN_AND_MEAN)
+  add_definitions(-D_WIN32)
   add_compile_options("/J")
 endif()
 
@@ -654,9 +657,13 @@ if (MSVC)
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=8192")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
+  add_definitions("-DWIN32")
+  add_definitions("-D_WINDOWS")
+
+  # Do not add any BASE flags as compiler is clang-cl and linker is lld-link, so use separate flags
 
   # bcrypt is needed for SSL
-  set(MSVC_LIBS Shlwapi.lib;crypt32.lib;bcrypt.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
+  set(MSVC_LIBS Shlwapi.lib crypt32.lib bcrypt.lib WINMM.LIB Ws2_32.lib Psapi.lib)
 
   if(STATIC_EXECUTABLES)
     # Static linkage files in accordance with:
@@ -676,7 +683,7 @@ if (MSVC)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
       set(MSVC_LIBS ${MSVC_LIBS} ucrtd.lib vcruntimed.lib msvcrtd.lib)
     else()
-      set(MSVC_LIBS ${MSVC_LIBS} ucrt.lib vcruntime.lib.lib msvcrt.lib)
+      set(MSVC_LIBS ${MSVC_LIBS} ucrt.lib vcruntime.lib msvcrt.lib)
     endif()
   endif()
 
@@ -697,7 +704,8 @@ endif ()
 ################################################################################
 
 include(OptimizeForArchitecture)
-set(BASE_FLAGS "${BASE_FLAGS} ${ARCHITECTURE_OPTIMIZATIONS}")
+set(BASE_C_FLAGS "${BASE_C_FLAGS} ${ARCHITECTURE_OPTIMIZATIONS}")
+set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} ${ARCHITECTURE_OPTIMIZATIONS}")
 
 ################################################################################
 ## BACKTRACE
@@ -952,6 +960,8 @@ function(add_compile_warnings_flags)
       # There's a warning about /MP being unused if compiling only a single file
       add_compile_options(-Wno-unused-command-line-argument)
       add_compile_options(-Wno-unused-function)
+      add_compile_options(-Wno-unused-parameter)
+      add_compile_options(-Wno-deprecated-declarations)
     else ()
       add_compile_options(-Werror -Wno-error=deprecated-declarations)
       if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -1049,7 +1059,7 @@ elseif ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND MSVC)
   endif(USE_CCACHE)
 
   add_definitions(/bigobj)
-  set(BASE_FLAGS "/Zl -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  set(BASE_FLAGS "")
 else()
   # unknown compiler
   message(FATAL_ERROR "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
@@ -1099,7 +1109,7 @@ if ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND MSVC)
   set(CMAKE_C_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} /MT /O2"                               CACHE INTERNAL "C release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} /MT /O2"                           CACHE INTERNAL "C release with debug info flags")
 
-  set(BASE_CXX_FLAGS                "/wd4996 /GR /EHsc /Zc:__cplusplus /W3 /MP"                   CACHE INTERNAL "default C++ compiler flags")
+  set(BASE_CXX_FLAGS                "/wd4996 /wd4100 /GR /EHsc /Zc:__cplusplus /W3 /MP"                   CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} /D _DEBUG /MTd /Ob0 /Od /RTC1"   CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} /MT /O1 /Gy /Gw"                     CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} /MT /O2"                             CACHE INTERNAL "C++ release flags")

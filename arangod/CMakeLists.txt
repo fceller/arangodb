@@ -22,7 +22,7 @@ if(MSVC)
   # MSVC: suppress warning C4091 (unused typedef)
   add_compile_options("/wd4091")
   # MSVC: suppress warning C4100 (unreferenced formal parameter)
-  add_compile_options("/wd4100")
+  add_compile_options("/wd4100") # suppress unused parameter warning
   # C4996: 'function': was declared deprecated
   add_compile_options("/wd4996")
   # C4217: 'function': nonstandard extension used : 'function' : conversion from 'type1' to 'type2'

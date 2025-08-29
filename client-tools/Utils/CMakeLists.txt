@@ -6,7 +6,7 @@ add_library(clienttools_utils STATIC
 
 target_link_libraries(clienttools_utils
   arango
-  ${MSVC_LIBS}
+  #${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   arango_basic_errors
   arango_static_strings

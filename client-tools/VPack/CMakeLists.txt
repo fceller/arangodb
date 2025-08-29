@@ -21,7 +21,7 @@ target_include_directories(${BIN_ARANGOVPACK} PRIVATE ${PROJECT_SOURCE_DIR}/clie
 
 target_link_libraries(${BIN_ARANGOVPACK}
   arango
-  ${MSVC_LIBS}
+  #${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost

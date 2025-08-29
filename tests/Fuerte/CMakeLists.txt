@@ -7,12 +7,12 @@ add_executable(fuertetest
   main.cpp
 )
 
-target_link_libraries(fuertetest
+target_link_libraries(fuertetest PRIVATE
     arango
     fuerte
     gtest
     boost_boost
-    ${MSVC_LIBS}
+    #${MSVC_LIBS}
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )

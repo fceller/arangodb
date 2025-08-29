@@ -36,7 +36,9 @@
 #include "ProgramOptions/Section.h"
 
 using namespace arangodb::options;
-extern char** environ;
+#ifndef _WIN32
+  extern char** environ;
+#endif
 
 namespace arangodb {
 
