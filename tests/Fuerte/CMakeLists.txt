@@ -12,7 +12,7 @@ target_link_libraries(fuertetest PRIVATE
     fuerte
     gtest
     boost_boost
-    #${MSVC_LIBS}
+    ${MSVC_LIBS}
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )

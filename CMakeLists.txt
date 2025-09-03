@@ -589,6 +589,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif ()
 
 if(MSVC)
+  add_compile_definitions(GTEST_HAS_PTHREAD=0)
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   if (MSVC_VERSION VERSION_LESS 1915)
     message(FATAL_ERROR "ArangoDB doesn't support MSVC less than 2017 update 15.8!")
@@ -642,14 +643,16 @@ if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # we need to exclude cla
   set(CMAKE_CXX20_EXTENSION_COMPILE_OPTION "-std:c++latest")
 endif ()
 
-# need threads
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
+if(NOT WIN32)
+  # need threads
+  set(THREADS_PREFER_PTHREAD_FLAG ON)
+  find_package(Threads REQUIRED)
 
-if(THREADS_HAVE_PTHREAD_ARG)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
+  if(THREADS_HAVE_PTHREAD_ARG)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
+  endif()
 endif()
 
 if (MSVC)

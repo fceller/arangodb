@@ -7,7 +7,7 @@ add_library(arango_shell STATIC
 target_link_libraries(arango_shell
   arango_basic_utils
   arango
-  #${MSVC_LIBS}
+  ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
@@ -61,7 +61,7 @@ target_link_libraries(${BIN_ARANGOSH}
   arango_v8
   ${V8_LIBS}
   fuerte
-  #${MSVC_LIBS}
+  ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost

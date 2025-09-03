@@ -22,7 +22,7 @@ target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/clien
 
 target_link_libraries(${BIN_ARANGODUMP}
   arango
-  #${MSVC_LIBS}
+  ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   arango_basic_maskings
   boost_system

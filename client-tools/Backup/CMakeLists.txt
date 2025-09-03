@@ -25,7 +25,7 @@ if (USE_ENTERPRISE)
 
   target_link_libraries(${BIN_ARANGOBACKUP}
     arango
-    # ${MSVC_LIBS}
+    ${MSVC_LIBS}
     ${SYSTEM_LIBRARIES}
     boost_system
     boost_boost

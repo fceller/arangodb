@@ -22,7 +22,7 @@ target_include_directories(${BIN_ARANGOEXPORT} PRIVATE ${PROJECT_SOURCE_DIR}/cli
 
 target_link_libraries(${BIN_ARANGOEXPORT}
   arango
-#  ${MSVC_LIBS}
+  ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost

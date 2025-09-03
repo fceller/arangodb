@@ -30,7 +30,7 @@ add_executable(${BIN_ARANGORESTORE}
 target_link_libraries(${BIN_ARANGORESTORE}
   arango_restore
   arango
-  #${MSVC_LIBS}
+  ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
