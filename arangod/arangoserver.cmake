@@ -231,7 +231,7 @@ target_link_libraries(arangoserver
   arango_vocbase
   arango_scheduler
   boost_boost
-  ${MSVC_LIBS})
+)
 if (MSVC)
   target_link_libraries(arangoserver Bcrypt.lib)
 endif()

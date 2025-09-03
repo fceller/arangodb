@@ -165,6 +165,12 @@ if (WIN32)
     list(APPEND V8_TARGET_ARCHS "Debug")
     set(DEFAULT_CONFIG "Debug")
   endif()
+
+  if(STATIC_EXECUTABLES)
+    set(SHARED_RUNTIME 0)
+  else()
+    set(SHARED_RUNTIME 1)
+  endif()
   
   set(GYP_GENERATORS "msvs")
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
@@ -175,7 +181,7 @@ if (WIN32)
     -DINSPECTOR_ROOT=${V8_DIR}
     --depth=.
     # whether or not to use dynamic runtime libraries
-    -Dforce_dynamic_crt=0
+    -Dforce_dynamic_crt=${SHARED_RUNTIME}
     # false on Windows, otherwise sets some compiler options for RTTI etc. 
     # when building ICU.
     -Dos_posix=0

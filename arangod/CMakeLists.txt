@@ -22,7 +22,7 @@ if(MSVC)
   # MSVC: suppress warning C4091 (unused typedef)
   add_compile_options("/wd4091")
   # MSVC: suppress warning C4100 (unreferenced formal parameter)
-  add_compile_options("/wd4100")
+  add_compile_options("/wd4100") # suppress unused parameter warning
   # C4996: 'function': was declared deprecated
   add_compile_options("/wd4996")
   # C4217: 'function': nonstandard extension used : 'function' : conversion from 'type1' to 'type2'
@@ -73,12 +73,13 @@ add_executable(${BIN_ARANGOD}
   ${ProductVersionFiles}
 )
   
-target_link_libraries(${BIN_ARANGOD}
+target_link_libraries(${BIN_ARANGOD} PRIVATE
+  ${MSVC_LIBS}
   arangoserver
   arango_iresearch)
 
 if (USE_JEMALLOC)
-  target_link_libraries(${BIN_ARANGOD} ${JEMALLOC_LIB})
+  target_link_libraries(${BIN_ARANGOD} PRIVATE ${JEMALLOC_LIB})
 endif ()
 
 add_dependencies(${BIN_ARANGOD} zlibstatic)
@@ -149,7 +150,7 @@ add_subdirectory(SystemMonitor)
 add_subdirectory(Utils)
 if (USE_V8)
   add_subdirectory(V8Server)
-  target_link_libraries(${BIN_ARANGOD} arango_v8_no_deadline)
+  target_link_libraries(${BIN_ARANGOD} PRIVATE arango_v8_no_deadline)
 endif()
 add_subdirectory(VocBase)
 add_subdirectory(Zkd)

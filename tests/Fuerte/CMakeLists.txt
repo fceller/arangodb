@@ -7,7 +7,7 @@ add_executable(fuertetest
   main.cpp
 )
 
-target_link_libraries(fuertetest
+target_link_libraries(fuertetest PRIVATE
     arango
     fuerte
     gtest
