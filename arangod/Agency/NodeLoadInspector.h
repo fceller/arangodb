@@ -292,7 +292,7 @@ struct NodeLoadInspectorImpl
   template<std::size_t Idx, std::size_t End, class T>
   [[nodiscard]] Status processTuple(T& data) {
     auto slice = _node->getArray();
-    assert(slice.has_value());
+    assert(slice != nullptr);
     if constexpr (Idx < End) {
       auto ff = make(slice->operator[](Idx));
       if (auto res = process(ff, std::get<Idx>(data)); !res.ok()) {
